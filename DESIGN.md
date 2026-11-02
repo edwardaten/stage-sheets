@@ -34,9 +34,14 @@ Read this file before changing the app. Update it when a decision changes.
 - Repeats: an exact repeat becomes a labeled chip in a roadmap line (`PRE-CHORUS → CHORUS → SOLO ×4`). The roadmap is the only place labels remain. A repeat with new words shows only the changed lines. A single changed short line sits inline after its chip. On two-page songs, repeats with new words print in full.
 - A line starting with `!` becomes a red banner.
 
+**Chords on the sheet (per song)**
+- Summary (default): the main loop goes in the chords strip and sections on it print as clean lyrics. Best for songs that just cycle a loop.
+- Inline: every chord prints over its word, as pasted. For songs where chord changes land on specific words (example: Angel). Inline keeps the compact header, chords strip, tints, big chord lines for intros and solos, the single-chord gutter, and roadmap chips for exact repeats.
+- Landscape was considered and rejected: same page area as portrait, and two landscape columns hold only about 48 characters at 11 pt, so long chord lines would break.
+
 **Fitting**
 - Order: one column at the largest size from 16 down to 11 pt. Then two columns. Two columns win only when they allow text at least 2 pt larger, or when one column can't fit. Two columns are never used if a chords-over-lyrics line would have to break.
-- If one page is impossible, use two pages at the largest size that fits.
+- If one page is impossible, use two pages at the largest size where at most one chords-over-lyrics line breaks.
 - Text floor is 11 pt everywhere (chosen from `tools/size_test.py`).
 - Blocks never split across columns or pages unless one is taller than a whole column.
 

@@ -55,7 +55,7 @@
   /* ---------- state ---------- */
   const S = { songs: [], current: null, paper: prefs.get('paper', 'light'), query: '', dirty: false, view: 'edit', layout: null, page: 0 };
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-  const blankSong = () => ({ id: uid(), title: '', artist: '', raw: '', shapeKey: '', capo: 0, transpose: 0, lockSound: true, bpm: '', tuning: '', notes: '', shapes: '', tags: [], condense: true, collapse: false, fontSize: 'auto', updated: Date.now(), created: Date.now() });
+  const blankSong = () => ({ id: uid(), title: '', artist: '', raw: '', shapeKey: '', capo: 0, transpose: 0, lockSound: true, bpm: '', tuning: '', notes: '', shapes: '', tags: [], condense: true, chordMode: 'summary', fontSize: 'auto', updated: Date.now(), created: Date.now() });
 
   /* ---------- environment: artifact viewer vs installed app ---------- */
   let downloads = null;
@@ -129,6 +129,7 @@
     if (!has) return;
     for (const f of FIELDS) $('#f_' + f).value = s[f] || '';
     $('#f_condense').checked = s.condense !== false;
+    $$('#chordMode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === (s.chordMode || 'summary'))));
     renderTagChips();
     $('#f_lock').checked = s.lockSound !== false;
     $('#f_font').value = s.fontSize || 'auto';
@@ -179,6 +180,11 @@
     }
     $('#f_shapeKey').addEventListener('change', e => { S.current.shapeKey = e.target.value; refreshKeyReadout(); touch(true); });
     $('#f_condense').addEventListener('change', e => { S.current.condense = e.target.checked; touch(true); });
+    $$('#chordMode button').forEach(b => b.addEventListener('click', () => {
+      S.current.chordMode = b.dataset.mode;
+      $$('#chordMode button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      touch(true);
+    }));
     $('#f_tagsOther').addEventListener('change', e => {
       const fixed = (S.current.tags || []).filter(t => TAGS.includes(t));
       const extra = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
@@ -252,7 +258,7 @@
     const host = $('#pages'); host.innerHTML = '';
     if (!S.current) { $('#pageInfo').textContent = ''; return; }
     let L;
-    try { L = SS.layout(S.current, { paper: S.paper, collapse: S.current.collapse, condense: S.current.condense, fontSize: S.current.fontSize }, measure); }
+    try { L = SS.layout(S.current, { paper: S.paper, chordMode: S.current.chordMode, condense: S.current.condense, fontSize: S.current.fontSize }, measure); }
     catch (e) { console.error(e); host.textContent = 'This sheet could not be laid out: ' + e.message; return; }
     S.layout = L;
     L.pages.forEach((ops, i) => {
@@ -271,7 +277,7 @@
   const pdfName = s => safeName((s.artist ? s.artist + ' - ' : '') + (s.title || 'Untitled')) + '.pdf';
 
   function buildPDF(song) {
-    const L = SS.layout(song, { paper: S.paper, collapse: song.collapse, condense: song.condense, fontSize: song.fontSize }, measure);
+    const L = SS.layout(song, { paper: S.paper, chordMode: song.chordMode, condense: song.condense, fontSize: song.fontSize }, measure);
     const info = L.info;
     const doc = SS.toPDF(window.jspdf.jsPDF, FONTS, L.pages, { title: song.title, artist: song.artist, keywords: SS.forScoreKeywords(song, info) });
     return doc.output('blob');

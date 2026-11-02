@@ -77,7 +77,11 @@ textarea#f_shapes { font-family: var(--f-mono); font-size: 13px; }
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 13px; min-height: 34px; font-family: var(--f-strong); font-size: 14px; color: var(--muted); }
 .chip[aria-pressed="true"] { background: var(--chord); border-color: var(--chord); color: var(--surface); }
 .chip.small { padding: 3px 10px; min-height: 28px; font-size: 12.5px; }
-.tagfield { display: grid; gap: 6px; }
+.tagfield, .modefield { display: grid; gap: 6px; }
+.modefield > span { font-size: 12px; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; font-family: var(--f-strong); }
+.toggle.wide { display: grid; grid-template-columns: 1fr 1fr; }
+.toggle.wide button { min-height: 40px; font-size: 15px; }
+.modefield .hint { margin: 0; text-transform: none; letter-spacing: 0; font-family: var(--f-ui); }
 .tagfield > span { font-size: 12px; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; font-family: var(--f-strong); }
 .tagfield input { text-transform: none; letter-spacing: 0; font-family: var(--f-ui); font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; width: 100%; }
 .keycard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 12px; }
@@ -200,6 +204,13 @@ textarea#f_shapes { font-family: var(--f-mono); font-size: 13px; }
         <label class="f">Key the pasted chords are written in<select id="f_shapeKey"></select></label>
       </div>
 
+      <div class="f modefield"><span>Chords on the sheet</span>
+        <div class="toggle wide" id="chordMode" role="group" aria-label="Chords on the sheet">
+          <button type="button" data-mode="summary" aria-pressed="true">Summary</button>
+          <button type="button" data-mode="inline" aria-pressed="false">Inline</button>
+        </div>
+        <p class="hint">Summary puts a song's main loop at the top and prints clean lyrics. Inline keeps every chord over the words, the way you pasted it.</p>
+      </div>
       <label class="f">My changes<textarea id="f_notes" placeholder="Arrangement notes, skips, endings…"></textarea></label>
       <div class="row">
         <label class="f">BPM<input id="f_bpm" inputmode="numeric" autocomplete="off"></label>
@@ -251,7 +262,7 @@ textarea#f_shapes { font-family: var(--f-mono); font-size: 13px; }
   <h3>Pages</h3>
   <ul>
     <li>Auto fit picks the largest lyric size that keeps the song on the fewest pages. Pages only break between sections.</li>
-    <li>Condense loops and repeats: sections on the song's main loop print lyrics only, and the loop goes in the chords box. A section on its own loop shows that loop beside its label.</li>
+    <li>Chords on the sheet: Summary puts the main loop in the chords strip and prints those sections as clean lyrics. Inline prints every chord over the words. Pick Inline for songs where the chord changes land on specific words.</li>
     <li>A section that repeats exactly becomes a chip in a roadmap line, like PRE-CHORUS → CHORUS. A repeat with a few new words shows only the new lines.</li>
     <li>If a song won't fit on one page, the sheet switches to two columns before it goes to a second page. Text never goes below 11 pt.</li>
     <li>When a song runs to a second page, the footer names the next section so you know what's coming.</li>

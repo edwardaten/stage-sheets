@@ -84,7 +84,11 @@ textarea#f_shapes { font-family: var(--f-mono); font-size: 13px; }
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 13px; min-height: 34px; font-family: var(--f-strong); font-size: 14px; color: var(--muted); }
 .chip[aria-pressed="true"] { background: var(--chord); border-color: var(--chord); color: var(--surface); }
 .chip.small { padding: 3px 10px; min-height: 28px; font-size: 12.5px; }
-.tagfield { display: grid; gap: 6px; }
+.tagfield, .modefield { display: grid; gap: 6px; }
+.modefield > span { font-size: 12px; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; font-family: var(--f-strong); }
+.toggle.wide { display: grid; grid-template-columns: 1fr 1fr; }
+.toggle.wide button { min-height: 40px; font-size: 15px; }
+.modefield .hint { margin: 0; text-transform: none; letter-spacing: 0; font-family: var(--f-ui); }
 .tagfield > span { font-size: 12px; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; font-family: var(--f-strong); }
 .tagfield input { text-transform: none; letter-spacing: 0; font-family: var(--f-ui); font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; width: 100%; }
 .keycard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 12px; }
@@ -207,6 +211,13 @@ textarea#f_shapes { font-family: var(--f-mono); font-size: 13px; }
         <label class="f">Key the pasted chords are written in<select id="f_shapeKey"></select></label>
       </div>
 
+      <div class="f modefield"><span>Chords on the sheet</span>
+        <div class="toggle wide" id="chordMode" role="group" aria-label="Chords on the sheet">
+          <button type="button" data-mode="summary" aria-pressed="true">Summary</button>
+          <button type="button" data-mode="inline" aria-pressed="false">Inline</button>
+        </div>
+        <p class="hint">Summary puts a song's main loop at the top and prints clean lyrics. Inline keeps every chord over the words, the way you pasted it.</p>
+      </div>
       <label class="f">My changes<textarea id="f_notes" placeholder="Arrangement notes, skips, endings…"></textarea></label>
       <div class="row">
         <label class="f">BPM<input id="f_bpm" inputmode="numeric" autocomplete="off"></label>
@@ -258,7 +269,7 @@ textarea#f_shapes { font-family: var(--f-mono); font-size: 13px; }
   <h3>Pages</h3>
   <ul>
     <li>Auto fit picks the largest lyric size that keeps the song on the fewest pages. Pages only break between sections.</li>
-    <li>Condense loops and repeats: sections on the song's main loop print lyrics only, and the loop goes in the chords box. A section on its own loop shows that loop beside its label.</li>
+    <li>Chords on the sheet: Summary puts the main loop in the chords strip and prints those sections as clean lyrics. Inline prints every chord over the words. Pick Inline for songs where the chord changes land on specific words.</li>
     <li>A section that repeats exactly becomes a chip in a roadmap line, like PRE-CHORUS → CHORUS. A repeat with a few new words shows only the new lines.</li>
     <li>If a song won't fit on one page, the sheet switches to two columns before it goes to a second page. Text never goes below 11 pt.</li>
     <li>When a song runs to a second page, the footer names the next section so you know what's coming.</li>
@@ -908,6 +919,7 @@ function layout(song, opts, measure) {
   const bodyTopN = TOP + miniH;
   const bodyBottom = H - FOOT - 8;
   const condense = opts.condense !== false;
+  const inline = opts.chordMode === 'inline';
   let wholeLoop = null;
   {
     const top = summary.slice().sort((a, b) => b.labels.length - a.labels.length)[0];
@@ -961,24 +973,24 @@ function layout(song, opts, measure) {
             if (repeatMode === 'diff' && changed.length <= Math.max(1, Math.floor(b.length / 2))) {
               const lines = changed.map(i => b[i]);
               const chordsSame = changed.every(i => norm(b[i].chords || '') === norm(a[i].chords || ''));
-              if (chordsSame && lines.length === 1 && (lines[0].text || '').trim().length <= 42) {
+              if (!inline && chordsSame && lines.length === 1 && (lines[0].text || '').trim().length <= 42) {
                 pushChip({ label: chipLabel, kind: sec.kind, repeat: 1, text: lines[0].text.trim() }); continue;
               }
               road = null;
-              items.push({ type: 'block', sec, mode: chordsSame ? 'lyrics' : 'chords', lines, note: 'new lines' }); continue;
+              items.push({ type: 'block', sec, mode: chordsSame && !inline ? 'lyrics' : 'chords', lines, note: 'new lines' }); continue;
             }
           }
         }
       }
       road = null;
       if (chordOnly) { items.push({ type: 'block', sec, mode: 'chordsOnly', lines: sec.lines }); continue; }
-      if (condense && !chordOnly && onMainLoop(sec)) { items.push({ type: 'block', sec, mode: 'lyrics', lines: sec.lines, loop: null }); continue; }
-      if (loop) {
+      if (condense && !inline && !chordOnly && onMainLoop(sec)) { items.push({ type: 'block', sec, mode: 'lyrics', lines: sec.lines, loop: null }); continue; }
+      if (loop && !inline) {
         const loopKey = loop.loop.join(' ');
         items.push({ type: 'block', sec, mode: 'lyrics', lines: sec.lines, loop: loopKey === wholeLoop ? null : loop.loop });
         continue;
       }
-      const sameAsFirst = condense && onePage && first && first !== sec && chordSig(first).split('|')[1] === chordSig(sec).split('|')[1];
+      const sameAsFirst = condense && !inline && onePage && first && first !== sec && chordSig(first).split('|')[1] === chordSig(sec).split('|')[1];
       items.push({ type: 'block', sec, mode: sameAsFirst ? 'lyrics' : 'chords', lines: sec.lines, note: sameAsFirst ? 'same chords' : null });
     }
     return items;
@@ -991,7 +1003,7 @@ function layout(song, opts, measure) {
     const maxC = Math.floor(bodyW / (CW * s));
     const ls = s * 1.04; // sans lyric size
     const tagFs = Math.min(10, Math.max(8.4, s * 0.72));
-    const L = { pair: s * 2.2, mono: s * 1.27, sans: s * 1.28, chords: s * 1.45, blank: s * 0.35, callout: s * 1.7, road: s * 1.62, pad: s * 0.26 };
+    const L = { pair: s * 2.04, mono: s * 1.24, sans: s * 1.28, chords: s * 1.45, blank: s * 0.28, callout: s * 1.7, road: s * 1.62, pad: s * 0.24 };
     const out = [];
     let pairWraps = 0;
     for (const it of items) {
@@ -1032,7 +1044,14 @@ function layout(song, opts, measure) {
           wrapPlain(l.text.replace(/^\s+/, ''), maxC - gutter).forEach((w, i) => rows.push({ t: 'inline', chord: i ? '' : l.chords, text: w, gutter, h: L.mono * 1.04 }));
           continue;
         }
-        if (l.type === 'pair') { const ps = splitPair(l.chords, l.text, maxC); if (ps.length > 1) pairWraps++; for (const p of ps) rows.push({ t: 'pair', chords: p.chords, text: p.text, h: L.pair }); continue; }
+        if (l.type === 'pair') {
+          const ps = splitPair(l.chords, l.text, maxC); if (ps.length > 1) pairWraps++;
+          for (const p of ps) {
+            if (p.chords.trim()) rows.push({ t: 'pair', chords: p.chords, text: p.text, h: L.pair });
+            else rows.push({ t: 'mono', text: p.text, h: L.mono });
+          }
+          continue;
+        }
         for (const w of wrapPlain(l.text, maxC)) rows.push({ t: 'mono', text: w, h: L.mono });
       }
       while (rows.length && rows[rows.length - 1].t === 'blank') rows.pop();
@@ -1085,7 +1104,10 @@ function layout(song, opts, measure) {
     if (fit1 && (!fit2 || fit2.s < fit1.s + 2)) best = fit1;
     else if (fit2) best = fit2;
     else {
-      best = sizes.map(s => attempt(s, 1, 'full', false)).find(a => a.n <= 2)
+      // two pages: prefer the largest size where no chord line has to break
+      const two = sizes.map(s => attempt(s, 1, 'full', false));
+      best = two.find(a => a.n <= 2 && a.pairWraps <= 1)
+        || two.find(a => a.n <= 2)
         || sizes.map(s => attempt(s, 1, 'diff', false)).find(a => a.n <= 2)
         || sizes.map(s => attempt(s, 2, 'diff', false)).find(a => a.n <= 2 && a.pairWraps === 0)
         || attempt(11, 2, 'diff', false);
@@ -1158,8 +1180,8 @@ function layout(song, opts, measure) {
     yy += pad;
     for (const r of it.rows) {
       if (r.t === 'pair') {
-        pushChordRow(ops, r.chords, bx, yy + r.h * 0.42, s, theme);
-        if (r.text.trim()) ops.push({ t: 'text', x: bx, y: yy + r.h * 0.88, str: r.text, font: 'Mono', size: s, color: theme.ink });
+        pushChordRow(ops, r.chords, bx, yy + s * 0.86, s, theme);
+        if (r.text.trim()) ops.push({ t: 'text', x: bx, y: yy + s * 1.82, str: r.text, font: 'Mono', size: s, color: theme.ink });
       } else if (r.t === 'inline') {
         const by = yy + r.h * 0.76;
         if (r.chord) ops.push({ t: 'text', x: bx, y: by, str: r.chord, font: 'MonoBold', size: s, color: theme.chord });
@@ -1804,7 +1826,7 @@ G Am Em C x4
   /* ---------- state ---------- */
   const S = { songs: [], current: null, paper: prefs.get('paper', 'light'), query: '', dirty: false, view: 'edit', layout: null, page: 0 };
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-  const blankSong = () => ({ id: uid(), title: '', artist: '', raw: '', shapeKey: '', capo: 0, transpose: 0, lockSound: true, bpm: '', tuning: '', notes: '', shapes: '', tags: [], condense: true, collapse: false, fontSize: 'auto', updated: Date.now(), created: Date.now() });
+  const blankSong = () => ({ id: uid(), title: '', artist: '', raw: '', shapeKey: '', capo: 0, transpose: 0, lockSound: true, bpm: '', tuning: '', notes: '', shapes: '', tags: [], condense: true, chordMode: 'summary', fontSize: 'auto', updated: Date.now(), created: Date.now() });
 
   /* ---------- environment: artifact viewer vs installed app ---------- */
   let downloads = null;
@@ -1878,6 +1900,7 @@ G Am Em C x4
     if (!has) return;
     for (const f of FIELDS) $('#f_' + f).value = s[f] || '';
     $('#f_condense').checked = s.condense !== false;
+    $$('#chordMode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === (s.chordMode || 'summary'))));
     renderTagChips();
     $('#f_lock').checked = s.lockSound !== false;
     $('#f_font').value = s.fontSize || 'auto';
@@ -1928,6 +1951,11 @@ G Am Em C x4
     }
     $('#f_shapeKey').addEventListener('change', e => { S.current.shapeKey = e.target.value; refreshKeyReadout(); touch(true); });
     $('#f_condense').addEventListener('change', e => { S.current.condense = e.target.checked; touch(true); });
+    $$('#chordMode button').forEach(b => b.addEventListener('click', () => {
+      S.current.chordMode = b.dataset.mode;
+      $$('#chordMode button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      touch(true);
+    }));
     $('#f_tagsOther').addEventListener('change', e => {
       const fixed = (S.current.tags || []).filter(t => TAGS.includes(t));
       const extra = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
@@ -2001,7 +2029,7 @@ G Am Em C x4
     const host = $('#pages'); host.innerHTML = '';
     if (!S.current) { $('#pageInfo').textContent = ''; return; }
     let L;
-    try { L = SS.layout(S.current, { paper: S.paper, collapse: S.current.collapse, condense: S.current.condense, fontSize: S.current.fontSize }, measure); }
+    try { L = SS.layout(S.current, { paper: S.paper, chordMode: S.current.chordMode, condense: S.current.condense, fontSize: S.current.fontSize }, measure); }
     catch (e) { console.error(e); host.textContent = 'This sheet could not be laid out: ' + e.message; return; }
     S.layout = L;
     L.pages.forEach((ops, i) => {
@@ -2020,7 +2048,7 @@ G Am Em C x4
   const pdfName = s => safeName((s.artist ? s.artist + ' - ' : '') + (s.title || 'Untitled')) + '.pdf';
 
   function buildPDF(song) {
-    const L = SS.layout(song, { paper: S.paper, collapse: song.collapse, condense: song.condense, fontSize: song.fontSize }, measure);
+    const L = SS.layout(song, { paper: S.paper, chordMode: song.chordMode, condense: song.condense, fontSize: song.fontSize }, measure);
     const info = L.info;
     const doc = SS.toPDF(window.jspdf.jsPDF, FONTS, L.pages, { title: song.title, artist: song.artist, keywords: SS.forScoreKeywords(song, info) });
     return doc.output('blob');
