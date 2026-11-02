@@ -128,7 +128,6 @@
     $('#editor').hidden = !has; $('#noSong').hidden = has;
     if (!has) return;
     for (const f of FIELDS) $('#f_' + f).value = s[f] || '';
-    $('#f_collapse').checked = !!s.collapse;
     $('#f_condense').checked = s.condense !== false;
     renderTagChips();
     $('#f_lock').checked = s.lockSound !== false;
@@ -179,7 +178,6 @@
       });
     }
     $('#f_shapeKey').addEventListener('change', e => { S.current.shapeKey = e.target.value; refreshKeyReadout(); touch(true); });
-    $('#f_collapse').addEventListener('change', e => { S.current.collapse = e.target.checked; touch(true); });
     $('#f_condense').addEventListener('change', e => { S.current.condense = e.target.checked; touch(true); });
     $('#f_tagsOther').addEventListener('change', e => {
       const fixed = (S.current.tags || []).filter(t => TAGS.includes(t));
@@ -264,7 +262,7 @@
       wrap.appendChild(cap); host.appendChild(wrap);
     });
     const n = L.pages.length;
-    $('#pageInfo').textContent = (n === 1 ? 'Fits on 1 page' : n + ' pages') + ' · lyrics ' + L.size + ' pt';
+    $('#pageInfo').textContent = (n === 1 ? 'Fits on 1 page' : n + ' pages') + (L.cols > 1 ? ' · 2 columns' : '') + ' · ' + L.size + ' pt';
     $('#pageInfo').dataset.state = n === 1 ? 'ok' : 'warn';
   }
 
@@ -396,14 +394,14 @@
 
     S.songs = await store.all();
     // add example songs once per example set (only titles not already present)
-    if (prefs.get('seededV', 0) < 2) {
+    if (prefs.get('seededV', 0) < 3) {
       const fresh = !S.songs.length || !prefs.get('seeded', false);
       for (const ex of window.SS_EXAMPLES || []) {
         if (!fresh && S.songs.some(x => x.title === ex.title)) continue;
-        if (!fresh && ex.title !== 'Morning Train') continue;
+        if (!fresh && !['Morning Train', 'Velvet Room'].includes(ex.title)) continue;
         const s = Object.assign(blankSong(), ex, { id: uid(), example: true }); S.songs.push(s); await store.put(s);
       }
-      prefs.set('seeded', true); prefs.set('seededV', 2);
+      prefs.set('seeded', true); prefs.set('seededV', 3);
     }
     sortSongs(); renderFilterChips();
     setPaper(S.paper); setView('edit');

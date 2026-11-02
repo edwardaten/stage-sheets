@@ -348,6 +348,7 @@ const PAPER = {
     noteTint: '#FFF8E0', noteBar: '#E0A100', noteLabel: '#8A6200', boxBg: '#F6F7F9', callout: '#D92D20', calloutInk: '#FFFFFF',
     kind: { verse: '#4B5B76', pre: '#7A3FD1', chorus: '#E25A0E', refrain: '#0E8C80', bridge: '#2E8A3A', intro: '#6A717D', outro: '#6A717D', inst: '#6A717D', other: '#8C6D1F', callout: '#D92D20' },
     labelInk: '#FFFFFF',
+    tint: { pre: '#F2ECFB', chorus: '#FFEEE0', refrain: '#E4F4F1', bridge: '#E8F4EA', intro: '#F0F2F5', outro: '#F0F2F5', inst: '#F0F2F5', other: '#F7F1E2' },
   },
   dark: {
     bg: '#101214', ink: '#ECEEF1', muted: '#9AA2AE', faint: '#2B3036', chord: '#7FB0FF', aux: '#7D8590',
@@ -355,6 +356,7 @@ const PAPER = {
     noteTint: '#221D0C', noteBar: '#E0A100', noteLabel: '#F0C64A', boxBg: '#191C20', callout: '#F04438', calloutInk: '#FFFFFF',
     kind: { verse: '#8FA3C4', pre: '#B48CF2', chorus: '#FF8A3D', refrain: '#3CC9B8', bridge: '#62C26F', intro: '#9AA2AE', outro: '#9AA2AE', inst: '#9AA2AE', other: '#D6B25A', callout: '#F04438' },
     labelInk: '#101214',
+    tint: { pre: '#211A2E', chorus: '#2A1C10', refrain: '#10241F', bridge: '#14231A', intro: '#1A1D21', outro: '#1A1D21', inst: '#1A1D21', other: '#241F11' },
   },
 };
 
@@ -442,6 +444,7 @@ function sectionLoop(sec) {
   }
   return null;
 }
+function norm(t) { return String(t).toLowerCase().replace(/[^a-z0-9#]+/g, ' ').trim(); }
 function chordSig(sec) { return shortLabel(sec.name) + '|' + sec.lines.filter(l => l.chords).map(l => l.chords.trim()).join('/'); }
 
 /* Build visual rows for a section at size s. mode: full | loop | lyrics | collapsed */
@@ -586,19 +589,35 @@ function layout(song, opts, measure) {
     const ops = []; let yy = by + pad + 7;
     ops.push({ t: 'text', x: bx + pad, y: yy, str: 'CHORDS', font: 'CondBold', size: 8, color: theme.muted, spacing: 1 });
     yy += 4;
-    const cs = summary.length > 6 ? 10.5 : 12;
-    const maxCh = Math.floor((boxW - 2 * pad) / (cs * CW));
+    const cs = summary.length > 5 ? 10.5 : 11.5;
+    const labW = 58, chX = bx + pad + labW + 4, chW = boxW - pad * 2 - labW - 4;
+    const maxCh = Math.floor(chW / (cs * CW));
+    yy += 2;
     for (const r of summary) {
-      yy += 12;
-      let lx = bx + pad;
-      r.labels.forEach((lb, i) => {
-        const txt = lb.text.toUpperCase() + (i < r.labels.length - 1 ? ' · ' : '');
-        ops.push({ t: 'text', x: lx, y: yy, str: txt, font: 'CondBold', size: 8.5, color: theme.kind[lb.kind] || theme.muted });
-        lx += measure(txt, 'CondBold', 8.5);
-      });
+      const labs = r.labels.map(lb => ({ text: lb.text.toUpperCase().replace(/^PRE$/, 'PRE'), kind: lb.kind }));
+      // label column: wrap labels, each keeps its own color
+      const labLines = [[]]; let lw = 0;
+      for (const lb of labs) {
+        const w = measure(lb.text, 'CondBold', 8) + (labLines[labLines.length - 1].length ? measure(' · ', 'CondBold', 8) : 0);
+        if (lw + w > labW && labLines[labLines.length - 1].length) { labLines.push([]); lw = 0; }
+        labLines[labLines.length - 1].push(lb); lw += w;
+      }
       const chordStr = r.chords.join('  ') + (r.more ? '  …' : '');
-      for (const w of wrapPlain(chordStr, maxCh)) { yy += cs * 1.18; ops.push({ t: 'text', x: bx + pad, y: yy, str: w.trim(), font: 'MonoSemi', size: cs, color: theme.chord }); }
-      yy += 3;
+      const chLines = wrapPlain(chordStr, maxCh).map(t => t.trim());
+      const rowH = Math.max(labLines.length * 10, chLines.length * cs * 1.2);
+      let ly = yy + 10;
+      for (const line of labLines) {
+        let lx = bx + pad;
+        line.forEach((lb, i) => {
+          const t = lb.text + (i < line.length - 1 ? ' · ' : '');
+          ops.push({ t: 'text', x: lx, y: ly, str: t, font: 'CondBold', size: 8, color: theme.kind[lb.kind] || theme.muted });
+          lx += measure(t, 'CondBold', 8);
+        });
+        ly += 10;
+      }
+      let cy = yy + cs * 0.95;
+      for (const w of chLines) { ops.push({ t: 'text', x: chX, y: cy, str: w, font: 'MonoSemi', size: cs, color: theme.chord }); cy += cs * 1.2; }
+      yy += rowH + 5;
     }
     const bh = yy - by + pad - 2;
     head.push({ t: 'rect', x: bx, y: by, w: boxW, h: bh, r: 6, fill: theme.boxBg, stroke: theme.faint });
@@ -622,84 +641,213 @@ function layout(song, opts, measure) {
   head.push({ t: 'rect', x: M, y, w: W - 2 * M, h: 0.8, r: 0, fill: theme.faint });
   const headerBottom = y + 6;
 
-  // ----- body sizing -----
-  const bodyX = M + 12, bodyW = W - M - bodyX - 2;
-  const firstAvail = H - FOOT - 10 - headerBottom;
+  // ----- body: v3 layout (tinted bands, margin tags, roadmap repeats, columns) -----
+  const bodyTop1 = headerBottom + 2;
   const miniH = 34;
-  const otherAvail = H - FOOT - 10 - (TOP + miniH);
-
-  // collapse identical repeats if asked; find sections that run on one chord loop
-  const seen = new Map();
+  const bodyTopN = TOP + miniH;
+  const bodyBottom = H - FOOT - 8;
   const condense = opts.condense !== false;
-  const secs = parsed.sections.map(s => {
-    const sig = shortLabel(s.name) + '|' + JSON.stringify(s.lines);
-    const rep = seen.has(sig); seen.set(sig, true);
-    return { sec: s, collapsed: !!opts.collapse && rep && s.lines.length > 0, loop: condense ? sectionLoop(s) : null, csig: chordSig(s) };
-  });
+  let wholeLoop = null;
+  {
+    const top = summary.slice().sort((a, b) => b.labels.length - a.labels.length)[0];
+    if (top && top.chords.length <= 6 && (summary.length === 1 || top.labels.length >= 2)) wholeLoop = top.key;
+  }
+  const onMainLoop = sec => {
+    if (!wholeLoop) return false;
+    const seq = sectionChords(sec); const d = []; for (const c of seq) if (d[d.length - 1] !== c) d.push(c);
+    const loop = wholeLoop.split(' ');
+    return d.length >= loop.length && d.every((c, i) => c === loop[i % loop.length]);
+  };
+  const tagName = name => {
+    let n = (name || '').toUpperCase().trim();
+    n = n.replace(/^PRE[\s-]?CHORUS/, 'PRE').replace(/^POST[\s-]?CHORUS/, 'POST').replace(/^INSTRUMENTAL/, 'INST').replace(/^INTERLUDE/, 'INTER');
+    return n;
+  };
 
-  let maxLen = 0;
-  for (const { sec } of secs) for (const l of sec.lines) maxLen = Math.max(maxLen, (l.chords || '').length, (l.text || '').length);
-  const noWrap = maxLen ? bodyW / (CW * maxLen) : 99;
-
-  function paginate(s) {
-    const maxC = Math.floor(bodyW / (CW * s));
-    const gap = s * 0.62;
-    const mk = (x, pageSeen) => {
-      let mode = 'full';
-      if (x.collapsed) mode = 'collapsed';
-      else if (x.loop) mode = 'loop';
-      else if (condense && pageSeen.has(x.csig) && x.sec.lines.some(l => l.type === 'pair')) mode = 'lyrics';
-      const { rows } = sectionRows(x.sec, s, maxC, mode, x.loop);
-      return { sec: x.sec, collapsed: x.collapsed, mode, rows, csig: x.csig, h: rows.reduce((a, r) => a + r.h, 0) + s * 0.3 };
+  /* Plan: turn sections into blocks and roadmap chips. */
+  function plan(repeatMode, onePage) {
+    const items = [];
+    const firstByBase = new Map();
+    let road = null;
+    const pushChip = chip => {
+      if (!road) { road = { type: 'road', chips: [] }; items.push(road); }
+      const last = road.chips[road.chips.length - 1];
+      if (last && !last.text && !chip.text && last.label === chip.label && last.loopTimes === chip.loopTimes) { last.repeat++; return; }
+      road.chips.push(chip);
     };
-    const pages = [[]]; let used = 0; let avail = firstAvail; let seenOnPage = new Set();
-    const newPage = () => { pages.push([]); avail = otherAvail; used = 0; seenOnPage = new Set(); };
-    for (const x of secs) {
-      let b = mk(x, seenOnPage);
-      const cur = pages[pages.length - 1];
-      const need = (cur.length ? gap : 0) + b.h;
-      if (used + need <= avail) { cur.push(b); used += need; if (b.mode === 'full') seenOnPage.add(b.csig); continue; }
-      if (cur.length) { newPage(); b = mk(x, seenOnPage); }
-      if (b.h > avail) {
-        // only a section taller than a whole page is split
-        let part = { ...b, rows: [], h: s * 0.3 };
-        for (const r of b.rows) {
-          if (part.h + r.h > avail && part.rows.length > 1) {
-            pages[pages.length - 1].push(part); newPage();
-            part = { ...b, rows: [{ ...b.rows[0], cont: true }], h: b.rows[0].h + s * 0.3, cont: true };
+    for (const sec of parsed.sections) {
+      if (sec.kind === 'callout' && !sec.lines.length) { road = null; items.push({ type: 'callout', text: sec.name }); continue; }
+      const base = shortLabel(sec.name || '').toLowerCase();
+      const chipLabel = (sec.name || 'Section').replace(/\s*\d+\s*$/, '').toUpperCase().replace(/^INSTRUMENTAL$/, 'INST');
+      const content = sec.lines.filter(l => l.type !== 'blank');
+      const chordOnly = content.length > 0 && content.every(l => l.type === 'chords');
+      const loop = condense ? sectionLoop(sec) : null;
+      const first = firstByBase.get(base);
+      if (!first) firstByBase.set(base, sec);
+      if (condense && first && base) {
+        if (chordOnly && first.lines.every(l => l.type !== 'pair')) {
+          const k = s2 => condenseChordLines(s2.lines).filter(l => l.type === 'chords').map(l => l.loopKey).join('|');
+          if (k(sec) === k(first)) {
+            const t = condenseChordLines(sec.lines).filter(l => l.type === 'chords').reduce((a, l) => a + l.times, 0);
+            pushChip({ label: chipLabel, kind: sec.kind, repeat: 1, loopTimes: t > 1 ? t : 0 }); continue;
           }
-          part.rows.push(r); part.h += r.h;
+        } else if (!chordOnly) {
+          const keyOf = l => norm(l.chords || '') + '|' + norm(l.text || '');
+          const a = first.lines.filter(l => l.type !== 'blank'), b = content;
+          if (a.length === b.length) {
+            const changed = []; b.forEach((l, i) => { if (keyOf(l) !== keyOf(a[i])) changed.push(i); });
+            if (!changed.length) { pushChip({ label: chipLabel, kind: sec.kind, repeat: 1 }); continue; }
+            if (repeatMode === 'diff' && changed.length <= Math.max(1, Math.floor(b.length / 2))) {
+              const lines = changed.map(i => b[i]);
+              const chordsSame = changed.every(i => norm(b[i].chords || '') === norm(a[i].chords || ''));
+              if (chordsSame && lines.length === 1 && (lines[0].text || '').trim().length <= 42) {
+                pushChip({ label: chipLabel, kind: sec.kind, repeat: 1, text: lines[0].text.trim() }); continue;
+              }
+              road = null;
+              items.push({ type: 'block', sec, mode: chordsSame ? 'lyrics' : 'chords', lines, note: 'new lines' }); continue;
+            }
+          }
         }
-        pages[pages.length - 1].push(part); used = part.h; continue;
       }
-      pages[pages.length - 1].push(b); used += b.h; if (b.mode === 'full') seenOnPage.add(b.csig);
+      road = null;
+      if (chordOnly) { items.push({ type: 'block', sec, mode: 'chordsOnly', lines: sec.lines }); continue; }
+      if (condense && !chordOnly && onMainLoop(sec)) { items.push({ type: 'block', sec, mode: 'lyrics', lines: sec.lines, loop: null }); continue; }
+      if (loop) {
+        const loopKey = loop.loop.join(' ');
+        items.push({ type: 'block', sec, mode: 'lyrics', lines: sec.lines, loop: loopKey === wholeLoop ? null : loop.loop });
+        continue;
+      }
+      const sameAsFirst = condense && onePage && first && first !== sec && chordSig(first).split('|')[1] === chordSig(sec).split('|')[1];
+      items.push({ type: 'block', sec, mode: sameAsFirst ? 'lyrics' : 'chords', lines: sec.lines, note: sameAsFirst ? 'same chords' : null });
     }
-    return { pages, maxC };
+    return items;
   }
 
-  let size, result;
+  /* Measure items into rows at size s for a column of width colW. */
+  function build(items, s, colW, cols) {
+    const tagW = cols > 1 ? 48 : 62;
+    const bodyW = colW - tagW - 6;
+    const maxC = Math.floor(bodyW / (CW * s));
+    const ls = s * 1.04; // sans lyric size
+    const tagFs = Math.min(10, Math.max(8.4, s * 0.72));
+    const L = { pair: s * 2.2, mono: s * 1.27, sans: s * 1.28, chords: s * 1.36, blank: s * 0.35, callout: s * 1.7, road: s * 1.62, pad: s * 0.26 };
+    const out = [];
+    for (const it of items) {
+      if (it.type === 'callout') { out.push({ ...it, h: L.callout }); continue; }
+      if (it.type === 'road') {
+        // flow chips into lines
+        const chipFs = s * 0.72, gapX = s * 0.5, arrowW = measure('→', 'CondMed', s) + gapX * 2;
+        const lines = [[]]; let x = 0;
+        it.chips.forEach((c, i) => {
+          const lab = c.label + (c.loopTimes ? ' ×' + c.loopTimes : '') + (c.repeat > 1 ? ' ×' + c.repeat : '');
+          const cw = measure(lab, 'CondBold', chipFs) + s * 0.9;
+          let tw = c.text ? measure(c.text, 'CondMed', ls) + gapX : 0;
+          const need = (i ? arrowW : 0) + cw + tw;
+          if (x + need > colW && x > 0) { lines.push([]); x = 0; }
+          const lead = lines[lines.length - 1].length ? arrowW : 0;
+          lines[lines.length - 1].push({ ...c, lab, cw, x: x + lead, arrowX: lead ? x + gapX : null });
+          x += lead + cw + tw;
+        });
+        out.push({ type: 'road', chips: it.chips, lines, chipFs, ls, h: lines.length * L.road + s * 0.1 });
+        continue;
+      }
+      const rows = [];
+      const lines = it.mode === 'chords' || it.mode === 'chordsOnly' ? condenseChordLines(it.lines) : it.lines;
+      const isInline = l => l.type === 'pair' && /^\S+$/.test(l.chords) && isChord(l.chords);
+      let gutter = 0;
+      if (it.mode === 'chords') { for (const l of lines) if (isInline(l)) gutter = Math.max(gutter, l.chords.length + 2); if (gutter) gutter = Math.max(gutter, 4); }
+      for (const l of lines) {
+        if (l.type === 'blank') { if (rows.length && it.mode !== 'chordsOnly') rows.push({ t: 'blank', h: L.blank }); continue; }
+        if (l.type === 'callout') { rows.push({ t: 'callout', text: l.text, h: L.callout }); continue; }
+        if (it.mode === 'lyrics') {
+          if (l.type === 'chords') { if (!it.loop && !wholeLoop) rows.push({ t: 'chords', chords: respaceChords(l.chords), h: L.chords }); continue; }
+          const txt = (l.text || '').trim(); if (!txt) continue;
+          wrapWords(txt, bodyW, 'CondMed', ls, measure).forEach((w, i) => rows.push({ t: 'sans', text: w, indent: i ? s * 0.9 : 0, h: L.sans }));
+          continue;
+        }
+        if (l.type === 'chords') { for (const w of wrapPlain(respaceChords(l.chords), maxC)) rows.push({ t: 'chords', chords: w, h: L.chords }); continue; }
+        if (isInline(l) && gutter) {
+          wrapPlain(l.text.replace(/^\s+/, ''), maxC - gutter).forEach((w, i) => rows.push({ t: 'inline', chord: i ? '' : l.chords, text: w, gutter, h: L.mono * 1.04 }));
+          continue;
+        }
+        if (l.type === 'pair') { for (const p of splitPair(l.chords, l.text, maxC)) rows.push({ t: 'pair', chords: p.chords, text: p.text, h: L.pair }); continue; }
+        for (const w of wrapPlain(l.text, maxC)) rows.push({ t: 'mono', text: w, h: L.mono });
+      }
+      while (rows.length && rows[rows.length - 1].t === 'blank') rows.pop();
+      // tag column content
+      const label = tagName(it.sec.name);
+      const tag = [];
+      if (label) {
+        const lfs = Math.min(tagFs, tagFs * (tagW - 10) / Math.max(1, measure(label, 'CondBold', tagFs)));
+        tag.push({ t: 'label', text: label, fs: lfs, h: tagFs * 1.2 });
+      }
+      if (it.loop) {
+        const cfs = Math.min(s * 0.78, 9.5);
+        const per = Math.max(1, Math.floor((tagW - 4) / (CW * cfs)));
+        for (const w of wrapPlain(it.loop.join(' '), per)) tag.push({ t: 'loop', text: w.trim(), fs: cfs, h: cfs * 1.18 });
+      }
+      if (it.note) tag.push({ t: 'note', text: it.note, h: tagFs * 1.2 });
+      const tagH = tag.reduce((a, r) => a + r.h, 0) + 2;
+      const rowsH = rows.reduce((a, r) => a + r.h, 0);
+      out.push({ ...it, rows, tag, tagFs, tagW, h: Math.max(rowsH, tagH) + L.pad * 2 });
+    }
+    return { items: out, tagW, gap: s * 0.38 };
+  }
+
+  /* Flow measured items into pages and columns. Items never split unless taller than a column. */
+  function flow(built, cols) {
+    const colGap = 16;
+    const colW = (W - 2 * M - colGap * (cols - 1)) / cols;
+    const pages = []; let page, col, y, top;
+    const newPage = () => { top = pages.length ? bodyTopN : bodyTop1; page = { cols: [] }; pages.push(page); col = 0; page.cols.push([]); y = top; };
+    newPage();
+    for (const it of built.items) {
+      const needGap = page.cols[col].length ? built.gap : 0;
+      if (y + needGap + it.h > bodyBottom && page.cols[col].length) {
+        if (col + 1 < cols) { col++; page.cols.push([]); y = top; }
+        else newPage();
+      }
+      const g = page.cols[col].length ? built.gap : 0;
+      page.cols[col].push({ it, x: M + col * (colW + colGap), y: y + g, w: colW });
+      y += g + it.h;
+    }
+    return { pages, colW };
+  }
+
+  function attempt(s, cols, repeatMode, onePage) {
+    const colW = (W - 2 * M - 16 * (cols - 1)) / cols;
+    const built = build(plan(repeatMode, onePage), s, colW, cols);
+    const f = flow(built, cols);
+    return { s, cols, repeatMode, pages: f.pages, n: f.pages.length };
+  }
+
+  let best = null;
+  const sizes = []; for (let s = 15; s >= 11; s -= 0.5) sizes.push(s);
   if (opts.fontSize && opts.fontSize !== 'auto') {
-    size = +opts.fontSize; result = paginate(size);
+    const s = +opts.fontSize;
+    const a1 = attempt(s, 1, 'diff', true);
+    best = a1.n === 1 ? a1 : (attempt(s, 2, 'diff', true).n === 1 ? attempt(s, 2, 'diff', true) : attempt(s, 1, 'full', false));
   } else {
-    // One page if it fits at 11pt or larger; otherwise never below 11.5pt.
-    const cap = Math.min(15, Math.max(noWrap, 12.5));
-    const sizes = []; for (let s = Math.floor(cap * 2) / 2; s >= 11; s -= 0.5) sizes.push(s);
-    for (const s of sizes) { const r = paginate(s); if (r.pages.length === 1) { size = s; result = r; break; } }
-    if (!result) {
-      const big = sizes.filter(s => s >= 11.5);
-      const minPages = paginate(11.5).pages.length;
-      for (const s of big) { const r = paginate(s); if (r.pages.length <= minPages) { size = s; result = r; break; } }
+    const fit1 = sizes.map(s => attempt(s, 1, 'diff', true)).find(a => a.n === 1);
+    const fit2 = sizes.map(s => attempt(s, 2, 'diff', true)).find(a => a.n === 1);
+    if (fit1 && (!fit2 || fit2.s < fit1.s + 2)) best = fit1;
+    else if (fit2) best = fit2;
+    else {
+      best = sizes.map(s => attempt(s, 1, 'full', false)).find(a => a.n <= 2)
+        || sizes.map(s => attempt(s, 1, 'diff', false)).find(a => a.n <= 2)
+        || sizes.map(s => attempt(s, 2, 'diff', false)).find(a => a.n <= 2)
+        || attempt(11, 2, 'diff', false);
     }
   }
-  const s = size;
+  const s = best.s;
 
-  // ----- render pages -----
-  const nPages = result.pages.length;
+  // ----- render -----
+  const nPages = best.n;
   const out = [];
-  result.pages.forEach((blocks, pi) => {
+  const firstOf = p => { for (const c of p.cols) if (c.length) return c[0].it; return null; };
+  best.pages.forEach((page, pi) => {
     const ops = [{ t: 'rect', x: 0, y: 0, w: W, h: H, r: 0, fill: theme.bg }];
-    let yy;
-    if (pi === 0) { ops.push(...head); yy = headerBottom; }
+    if (pi === 0) ops.push(...head);
     else {
       const my = TOP + 16;
       ops.push({ t: 'text', x: M, y: my, str: title, font: 'CondBold', size: 17, color: theme.ink });
@@ -709,64 +857,85 @@ function layout(song, opts, measure) {
       if (info.capo > 0) runs.push({ text: '   CAPO ' + info.capo + '   PLAY ', font: 'CondBold', size: 10, color: theme.muted }, ...keyRuns(playName, 'CondBold', 11, theme.ink));
       ops.push({ t: 'runs', x: W - M - runsWidth(runs, measure), y: my, runs });
       ops.push({ t: 'rect', x: M, y: my + 9, w: W - 2 * M, h: 0.8, r: 0, fill: theme.faint });
-      yy = TOP + miniH;
     }
-    blocks.forEach((b, bi) => {
-      if (bi > 0 || pi > 0) yy += s * 0.62;
-      const sec = b.sec; const col = theme.kind[sec.kind] || theme.muted;
-      const bodyTop = yy + (b.rows[0] && b.rows[0].t === 'head' ? b.rows[0].h : 0) - s * 0.35;
-      const bodyBottom = yy + b.h - s * 0.3;
-      if (sec.kind === 'chorus' && !b.collapsed) ops.push({ t: 'rect', x: M - 2, y: bodyTop - s * 0.1, w: W - 2 * M + 4, h: bodyBottom - bodyTop + s * 0.35, r: 4, fill: theme.chorusTint });
-      if (!b.collapsed && b.rows.length > 1) ops.push({ t: 'rect', x: M, y: bodyTop, w: 3, h: bodyBottom - bodyTop, r: 1.5, fill: col });
-      for (const r of b.rows) {
-        if (r.t === 'head') {
-          const label = (sec.name || 'Song').toUpperCase() + (r.cont ? ' (cont.)' : '');
-          const ls = s * 0.74;
-          const lw = measure(label, 'CondBold', ls) + 12;
-          const ph = s * 1.12, pyy = yy + (r.h - ph) / 2 - s * 0.12;
-          ops.push({ t: 'rect', x: M, y: pyy, w: lw, h: ph, r: 3, fill: col });
-          ops.push({ t: 'text', x: M + 6, y: pyy + ph * 0.72, str: label, font: 'CondBold', size: ls, color: theme.labelInk, spacing: 0.4 });
-          const by2 = pyy + ph * 0.74;
-          if (r.loop) {
-            ops.push({ t: 'text', x: M + lw + 10, y: by2, str: r.loop, font: 'MonoBold', size: s, color: theme.chord });
-            if (r.times > 1) ops.push({ t: 'text', x: M + lw + 10 + (r.loop.length + 2) * CW * s, y: by2, str: '×' + r.times, font: 'Mono', size: s, color: theme.aux });
-          } else if (r.note) ops.push({ t: 'text', x: M + lw + 8, y: by2, str: r.note, font: 'CondMed', size: ls, color: theme.muted });
-        } else if (r.t === 'pair') {
-          const cy = yy + r.h * 0.40; const ly = yy + r.h * 0.86;
-          pushChordRow(ops, r.chords, bodyX, cy, s, theme);
-          if (r.text.trim()) ops.push({ t: 'text', x: bodyX, y: ly, str: r.text, font: 'Mono', size: s, color: theme.ink, pre: true });
-        } else if (r.t === 'inline') {
-          const by = yy + r.h * 0.74;
-          if (r.chord) ops.push({ t: 'text', x: bodyX, y: by, str: r.chord, font: 'MonoBold', size: s, color: theme.chord });
-          ops.push({ t: 'text', x: bodyX + r.gutter * CW * s, y: by, str: r.text, font: 'Mono', size: s, color: theme.ink, pre: true });
-        } else if (r.t === 'chords') {
-          pushChordRow(ops, r.chords, bodyX, yy + r.h * 0.72, s * 1.04, theme);
-        } else if (r.t === 'lyric') {
-          ops.push({ t: 'text', x: bodyX, y: yy + r.h * 0.74, str: r.text, font: 'Mono', size: s, color: theme.ink, pre: true });
-        } else if (r.t === 'callout') {
-          const bh = s * 1.45, by = yy + (r.h - bh) / 2;
-          ops.push({ t: 'rect', x: M, y: by, w: W - 2 * M, h: bh, r: 4, fill: theme.callout });
-          ops.push({ t: 'text', x: M + 10, y: by + bh * 0.7, str: r.text.toUpperCase(), font: 'CondBold', size: s * 0.88, color: theme.calloutInk, spacing: 0.3 });
-        }
-        yy += r.h;
-      }
-      yy += s * 0.3;
-    });
+    for (const colItems of page.cols) for (const pl of colItems) renderItem(ops, pl, s);
     // footer
     const fy = H - 12;
     ops.push({ t: 'text', x: M, y: fy, str: title + (artist ? '  ·  ' + artist : ''), font: 'CondMed', size: 8, color: theme.muted });
-    let right = nPages > 1 ? 'PAGE ' + (pi + 1) + ' OF ' + nPages : '';
+    const right = nPages > 1 ? 'PAGE ' + (pi + 1) + ' OF ' + nPages : '';
     if (pi < nPages - 1) {
-      const nb = result.pages[pi + 1][0];
-      const nextName = nb ? (nb.sec.name || '').toUpperCase() + (nb.cont ? ' (CONT.)' : '') : '';
-      const runs = [{ text: right + '   NEXT  ', font: 'CondMed', size: 8, color: theme.muted }, { text: nextName + ' →', font: 'CondBold', size: 9.5, color: nb ? (theme.kind[nb.sec.kind] || theme.ink) : theme.ink }];
+      const nb = firstOf(best.pages[pi + 1]);
+      const nextName = nb ? (nb.type === 'road' ? nb.chips[0].label : nb.type === 'callout' ? 'NOTE' : (nb.sec.name || '').toUpperCase()) : '';
+      const nk = nb ? (nb.type === 'road' ? nb.chips[0].kind : nb.type === 'callout' ? 'callout' : nb.sec.kind) : 'other';
+      const runs = [{ text: right + '   NEXT  ', font: 'CondMed', size: 8, color: theme.muted }, { text: nextName + ' →', font: 'CondBold', size: 9.5, color: theme.kind[nk] || theme.ink }];
       ops.push({ t: 'runs', x: W - M - runsWidth(runs, measure), y: fy, runs });
     } else if (right) {
       ops.push({ t: 'text', x: W - M - measure(right, 'CondMed', 8), y: fy, str: right, font: 'CondMed', size: 8, color: theme.muted });
     }
     out.push(ops);
   });
-  return { pages: out, size: s, info, summary };
+
+  function renderItem(ops, pl, s) {
+    const it = pl.it, x0 = pl.x, w = pl.w;
+    let yy = pl.y;
+    if (it.type === 'callout') {
+      const bh = s * 1.4, by = yy + (it.h - bh) / 2;
+      ops.push({ t: 'rect', x: x0, y: by, w, h: bh, r: 4, fill: theme.callout });
+      ops.push({ t: 'text', x: x0 + 10, y: by + bh * 0.7, str: it.text.toUpperCase(), font: 'CondBold', size: s * 0.86, color: theme.calloutInk, spacing: 0.3 });
+      return;
+    }
+    if (it.type === 'road') {
+      const rh = s * 1.62, ch = s * 1.28;
+      it.lines.forEach((line, li) => {
+        const cy = yy + li * rh + (rh - ch) / 2;
+        for (const c of line) {
+          if (c.arrowX !== null) ops.push({ t: 'text', x: x0 + c.arrowX, y: cy + ch * 0.74, str: '→', font: 'CondMed', size: s, color: theme.muted });
+          const col = theme.kind[c.kind] || theme.muted;
+          ops.push({ t: 'rect', x: x0 + c.x, y: cy, w: c.cw, h: ch, r: ch / 2, fill: col });
+          ops.push({ t: 'text', x: x0 + c.x + s * 0.45, y: cy + ch * 0.71, str: c.lab, font: 'CondBold', size: it.chipFs, color: theme.labelInk, spacing: 0.3 });
+          if (c.text) ops.push({ t: 'text', x: x0 + c.x + c.cw + s * 0.45, y: cy + ch * 0.74, str: c.text, font: 'CondMed', size: it.ls, color: theme.ink });
+        }
+      });
+      return;
+    }
+    const kind = it.sec.kind, col = theme.kind[kind] || theme.muted, tint = theme.tint[kind];
+    if (tint) ops.push({ t: 'rect', x: x0, y: yy, w, h: it.h, r: 6, fill: tint });
+    else ops.push({ t: 'rect', x: x0 + 1, y: yy + s * 0.2, w: 2, h: it.h - s * 0.4, r: 1, fill: theme.faint });
+    const pad = s * 0.26;
+    // tag column
+    let ty = yy + pad;
+    for (const r of it.tag) {
+      ty += r.h;
+      if (r.t === 'label') ops.push({ t: 'text', x: x0 + 7, y: ty - r.h * 0.2, str: r.text, font: 'CondBold', size: r.fs, color: col, spacing: 0.4 });
+      else if (r.t === 'loop') ops.push({ t: 'text', x: x0 + 7, y: ty - r.h * 0.2, str: r.text, font: 'MonoBold', size: r.fs, color: theme.chord });
+      else ops.push({ t: 'text', x: x0 + 7, y: ty - r.h * 0.25, str: r.text, font: 'CondMed', size: it.tagFs * 0.92, color: theme.muted });
+    }
+    const bx = x0 + it.tagW;
+    yy += pad;
+    for (const r of it.rows) {
+      if (r.t === 'pair') {
+        pushChordRow(ops, r.chords, bx, yy + r.h * 0.42, s, theme);
+        if (r.text.trim()) ops.push({ t: 'text', x: bx, y: yy + r.h * 0.88, str: r.text, font: 'Mono', size: s, color: theme.ink });
+      } else if (r.t === 'inline') {
+        const by = yy + r.h * 0.76;
+        if (r.chord) ops.push({ t: 'text', x: bx, y: by, str: r.chord, font: 'MonoBold', size: s, color: theme.chord });
+        ops.push({ t: 'text', x: bx + r.gutter * CW * s, y: by, str: r.text, font: 'Mono', size: s, color: theme.ink });
+      } else if (r.t === 'chords') {
+        pushChordRow(ops, r.chords, bx, yy + r.h * 0.72, s * 1.04, theme);
+      } else if (r.t === 'mono') {
+        ops.push({ t: 'text', x: bx, y: yy + r.h * 0.76, str: r.text, font: 'Mono', size: s, color: theme.ink });
+      } else if (r.t === 'sans') {
+        ops.push({ t: 'text', x: bx + r.indent, y: yy + r.h * 0.76, str: r.text, font: 'CondMed', size: s * 1.04, color: theme.ink });
+      } else if (r.t === 'callout') {
+        const bh = s * 1.35, by = yy + (r.h - bh) / 2;
+        ops.push({ t: 'rect', x: bx - 4, y: by, w: x0 + w - bx, h: bh, r: 4, fill: theme.callout });
+        ops.push({ t: 'text', x: bx + 4, y: by + bh * 0.7, str: r.text.toUpperCase(), font: 'CondBold', size: s * 0.84, color: theme.calloutInk, spacing: 0.3 });
+      }
+      yy += r.h;
+    }
+  }
+
+  return { pages: out, size: s, cols: best.cols, info, summary };
 }
 
 function pushChordRow(ops, line, x, y, s, theme) {

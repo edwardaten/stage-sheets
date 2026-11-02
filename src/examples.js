@@ -277,4 +277,192 @@ Am      F            C          G
   Shake off the dreaming, now the road is clear
 `,
   },
+  {
+    title: 'Velvet Room', artist: 'Example Song', capo: 0, bpm: '118', tags: ['Bar', 'Campfire'],
+    notes: 'Same structure as a long pop song: one loop nearly everywhere, a bridge on its own chords.',
+    raw: `[Intro]
+D
+
+
+[Verse 1]
+G         Am
+I know the city wants me home
+      Em                            C
+But I can't ignore the little lights that hum along the coast and
+G           Am
+I heard there is a quiet place
+      Em                             C
+Where everyone can wear a crown for just a single day
+
+
+[Refrain]
+G
+  I'm chasing restless dreams
+Am
+  of leaving Ballarat
+Em
+  Oh, that silver line
+C
+  keeps calling me right back
+G
+  Won't make my father proud
+Am
+  It's gonna turn some heads
+Em
+  He sees his only kid
+C
+  I know what will be said
+
+
+[Pre-Chorus]
+G                 Am
+Oh, what have you done
+                    Em
+You're a velvet room girl
+                      C
+And you shine in the dark
+         G              Am
+Oh father, I'm just having fun
+                    Em
+In the lights on the floor
+               C
+It's where I belong down at the
+
+
+[Chorus]
+G
+Velvet Room
+Am
+I'm gonna keep on spinning
+Em
+at the Velvet Room
+C
+I'm gonna keep on spinning down in
+G
+Marrickville
+Am
+I'm gonna keep on spinning
+       Em
+at the Velvet Room
+C
+Velvet Room
+
+
+[Verse 2]
+G         Am
+I'm up and every head is turned
+Em                          C
+Strangers on the staircase and a queue around the block
+G                 Am
+Mirror tiles and a slow red glow
+Em                          C
+Every night's another reason why I never stopped
+
+
+[Refrain]
+G
+  I thank my restless dreams
+Am
+  a year from Ballarat
+Em
+  Oh, that silver line
+C
+  You've been too good to me
+G
+  Won't make my father proud
+Am
+  It's gonna turn some heads
+Em
+  He sees his only kid
+C
+  I know what will be said
+
+
+[Pre-Chorus]
+G                 Am
+Oh, what have you done
+                    Em
+You're a velvet room girl
+                      C
+and you shine in the dark
+         G              Am
+Oh father, I'm just having fun
+                    Em
+In the lights on the floor
+               C
+It's where I belong down at the
+
+
+[Chorus]
+G
+Velvet Room
+Am
+I'm gonna keep on spinning
+       Em
+at the Velvet Room
+C
+I'm gonna keep on spinning down in
+G
+Marrickville
+Am
+I'm gonna keep on spinning
+       Em
+at the Velvet Room
+C
+Velvet Room
+
+
+[Solo]
+G Am Em C
+
+
+[Bridge]
+C                D
+Don't think I've left you all behind
+Em                                 Am
+Still love you and the old town, you're always on my mind
+     C    D
+And father, every Sunday
+Em                              Am
+I can hear the screen door creaking from a thousand miles away, sayin'
+
+
+[Pre-Chorus]
+G                  Am
+Oh,  what have you done
+                    Em
+You're a velvet room girl
+                      C
+And you shine in the dark
+         G              Am
+Oh father, I'm just having fun
+                    Em
+In the lights on the floor
+               C
+It's where I belong down at the
+
+
+[Chorus]
+G
+Velvet Room
+Am
+I'm gonna keep on spinning
+       Em
+at the Velvet Room
+C
+I'm gonna keep on spinning down in
+G
+Marrickville
+Am
+I'm gonna keep on spinning
+       Em
+at the Velvet Room
+C
+Velvet Room
+
+
+[Solo]
+G Am Em C x4
+`,
+  },
 ];

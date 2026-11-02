@@ -22,33 +22,32 @@ Read this file before changing the app. Update it when a decision changes.
 - Big title and artist.
 - KEY shows the key the song sounds in. With a capo, an amber box shows CAPO n and the chord shapes played (PLAY G shapes). Without a capo it says NO CAPO.
 - BPM and tuning when set (tuning only when not standard).
-- Chords summary box, top right. Sections that share a progression merge into one row. When one loop covers the whole song it says WHOLE SONG.
+- Chords summary box, top right: section labels on the left, chords on the right. Sections that share a progression merge into one row. When one loop covers the whole song it says WHOLE SONG.
 - MY CHANGES box for arrangement notes.
 - Chord diagrams only for chords the user marks (`Shape: Cadd9 x32033`, or the shapes field).
 - No strumming patterns. No time signature.
 
-**Body**
-- Monospaced font wherever chords sit over lyrics, so UG spacing pastes straight in.
-- Each section type has its own color. Chorus is the one that pops.
-- A line starting with `!` becomes a red banner (key changes, big reminders).
-- Repeated chord-only lines condense to `Am F C G ×4`.
-- A section that runs on one short loop puts the loop on its label and prints lyrics only.
-- A line that starts with a single chord shows the chord in a left gutter beside the lyric.
+**Body (v3)**
+- Every section is a block with its label in a small left tag column, so labels cost no row. Chorus, pre-chorus, refrain, bridge and instrumental blocks get a soft tint in their section color. Verses stay plain with a faint rule. Labels are shortened: PRE, POST, INST.
+- The main loop is the progression shared by the most sections. It shows once in the chords box. Sections on it print lyrics only, in the narrow sans font.
+- A section on its own short loop prints lyrics only and shows that loop under its tag.
+- Other sections print chords over lyrics in monospace. A line that starts with a single chord shows the chord in a left gutter.
+- Chord-only lines condense to `Am F C G ×4`.
+- Repeats: an exact repeat becomes a chip in a roadmap line (`PRE-CHORUS → CHORUS → SOLO ×4`). A repeat with new words shows only the changed lines (tagged "new lines"). A single changed short line sits inline after its chip. On two-page songs, repeats with new words print in full.
+- A later section with the same chords as an earlier one of the same name prints lyrics only ("same chords"), on one-page songs only.
+- A line starting with `!` becomes a red banner.
+
+**Fitting**
+- Order: one column at the largest size from 15 down to 11 pt. Then two columns. Two columns win only when they allow text at least 2 pt larger, or when one column can't fit.
+- If one page is impossible, use two pages at the largest size that fits.
+- Text floor is 11 pt everywhere (chosen from `tools/size_test.py`).
+- Blocks never split across columns or pages unless one is taller than a whole column.
 
 **Files and metadata**
 - File name: `Artist - Title.pdf`.
 - PDF metadata that forScore reads on import: Title, Author (artist, shown as composer), Keywords (tags plus `keysf:`/`keymi:` for key).
 - Tags: Campfire, Bar, Jam, Blues, plus free tags. Used for forScore setlists and finding songs to play with others.
 - Light and dark paper toggle.
-
-## Agreed next (v3 layout)
-
-1. **Repeats become a roadmap.** A section prints in full the first time. Later identical repeats become a compact flow line of colored chips, like `PRE-CHORUS → CHORUS → SOLO ×4`. When a repeat has new words and the song still fits on one page, show only the changed lines.
-2. **Sections as full tinted bands, not header rows.** The label moves to a small margin tag, so it costs no row. Verses stay plain. Should look designed, not highlighted.
-3. **Lyric-only sections in a narrow sans font.** No alignment is needed there, and it fits about 50% more words per line.
-4. **Two columns as a fallback** to hold one page, breaking only between sections.
-5. **Fitting order:** condense loops, roadmap repeats, compact sections, shrink text to the floor, two columns, then two pages.
-6. Text size floor: 11 pt (chosen from the size test sheet, `tools/size_test.py`).
 
 ## Parked
 

@@ -215,8 +215,7 @@ textarea#f_shapes { font-family: var(--f-mono); font-size: 13px; }
       <div class="row">
         <label class="f">Lyrics size<select id="f_font"><option value="auto">Auto fit</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option></select></label>
         <div style="display:grid;gap:8px;align-self:end;padding-bottom:4px">
-          <label class="check"><input type="checkbox" id="f_condense"> Condense looping chords</label>
-          <label class="check"><input type="checkbox" id="f_collapse"> Shorten repeated sections</label>
+          <label class="check"><input type="checkbox" id="f_condense"> Condense loops and repeats</label>
         </div>
       </div>
       <div class="danger"><button class="btn del" id="btnDelete" type="button">Delete song</button>
@@ -252,7 +251,9 @@ textarea#f_shapes { font-family: var(--f-mono); font-size: 13px; }
   <h3>Pages</h3>
   <ul>
     <li>Auto fit picks the largest lyric size that keeps the song on the fewest pages. Pages only break between sections.</li>
-    <li>Condense looping chords: when a whole section runs on one short loop, the loop goes on the section label and the lyrics print clean. A repeat of a section already shown on the same page prints lyrics only.</li>
+    <li>Condense loops and repeats: sections on the song's main loop print lyrics only, and the loop goes in the chords box. A section on its own loop shows that loop beside its label.</li>
+    <li>A section that repeats exactly becomes a chip in a roadmap line, like PRE-CHORUS → CHORUS. A repeat with a few new words shows only the new lines.</li>
+    <li>If a song won't fit on one page, the sheet switches to two columns before it goes to a second page. Text never goes below 11 pt.</li>
     <li>When a song runs to a second page, the footer names the next section so you know what's coming.</li>
   </ul>
   <h3>Tags and forScore</h3>
