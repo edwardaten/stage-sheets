@@ -477,7 +477,7 @@ function sectionChords(sec) {
     if (!l.chords) continue;
     for (const t of l.chords.trim().split(/\s+/)) {
       const c = parseChord(t);
-      if (c) seq.push(c.root + c.rest + (c.bass ? '/' + c.bass : ''));
+      if (c && !c.open) seq.push(c.root + c.rest.replace(/[()]/g, '') + (c.bass ? '/' + c.bass : ''));
     }
   }
   return seq;
@@ -966,7 +966,13 @@ function layout(song, opts, measure) {
           }
         } else if (!chordOnly) {
           const keyOf = l => norm(l.chords || '') + '|' + norm(l.text || '');
-          const a = first.lines.filter(l => l.type !== 'blank'), b = content;
+          const lyr = x => x.filter(l => l.type === 'pair' || l.type === 'lyric');
+          const a = lyr(first.lines), b = lyr(content);
+          // same lines, then the last line repeated: "CHORUS  last line ×N"
+          if (b.length > a.length && a.length && b.slice(0, a.length).every((l, i) => keyOf(l) === keyOf(a[i]))
+              && b.slice(a.length).every(l => keyOf(l) === keyOf(a[a.length - 1]))) {
+            pushChip({ label: chipLabel, kind: sec.kind, repeat: 1, text: 'last line ×' + (b.length - a.length + 1) }); continue;
+          }
           if (a.length === b.length) {
             const changed = []; b.forEach((l, i) => { if (keyOf(l) !== keyOf(a[i])) changed.push(i); });
             if (!changed.length) { pushChip({ label: chipLabel, kind: sec.kind, repeat: 1 }); continue; }
@@ -1090,7 +1096,7 @@ function layout(song, opts, measure) {
   }
 
   let best = null;
-  const sizes = []; for (let s = 16; s >= 11; s -= 0.5) sizes.push(s);
+  const sizes = []; for (let s = 16; s >= 10; s -= 0.5) sizes.push(s);
   if (opts.cols && opts.fontSize && opts.fontSize !== 'auto') {
     best = attempt(+opts.fontSize, opts.cols, 'diff', true);
   } else if (opts.fontSize && opts.fontSize !== 'auto') {
@@ -1098,7 +1104,13 @@ function layout(song, opts, measure) {
     const a1 = attempt(s, 1, 'diff', true);
     best = a1.n === 1 ? a1 : (attempt(s, 2, 'diff', true).n === 1 ? attempt(s, 2, 'diff', true) : attempt(s, 1, 'full', false));
   } else {
-    const fit1 = sizes.map(s => attempt(s, 1, 'diff', true)).find(a => a.n === 1);
+    // one column: largest size that fits one page; drop up to 1.5 pt more if that keeps every chord line whole
+    const one = sizes.map(s => attempt(s, 1, 'diff', true));
+    let fit1 = one.find(a => a.n === 1);
+    if (fit1 && fit1.pairWraps > 0) {
+      const whole = one.find(a => a.n === 1 && a.pairWraps === 0 && a.s >= fit1.s - 1.5);
+      if (whole) fit1 = whole;
+    }
     // two columns only when no chords-over-lyrics line has to break
     const fit2 = sizes.map(s => attempt(s, 2, 'diff', true)).find(a => a.n === 1 && a.pairWraps === 0);
     if (fit1 && (!fit2 || fit2.s < fit1.s + 2)) best = fit1;
@@ -1110,7 +1122,7 @@ function layout(song, opts, measure) {
         || two.find(a => a.n <= 2)
         || sizes.map(s => attempt(s, 1, 'diff', false)).find(a => a.n <= 2)
         || sizes.map(s => attempt(s, 2, 'diff', false)).find(a => a.n <= 2 && a.pairWraps === 0)
-        || attempt(11, 2, 'diff', false);
+        || attempt(10, 2, 'diff', false);
     }
   }
   const s = best.s;
