@@ -1,0 +1,271 @@
+<title>Stage Sheets</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--HEAD_EXTRA-->
+<style>
+/* Layout: library rail | editor | live page preview. Graphite workbench, amber = capo/action. */
+@font-face { font-family: 'SSMono'; src: url(data:font/ttf;base64,__F_Mono__) format('truetype'); }
+@font-face { font-family: 'SSMonoSemi'; src: url(data:font/ttf;base64,__F_MonoSemi__) format('truetype'); }
+@font-face { font-family: 'SSMonoBold'; src: url(data:font/ttf;base64,__F_MonoBold__) format('truetype'); }
+@font-face { font-family: 'SSCondBold'; src: url(data:font/ttf;base64,__F_CondBold__) format('truetype'); }
+@font-face { font-family: 'SSCondMed'; src: url(data:font/ttf;base64,__F_CondMed__) format('truetype'); }
+@font-face { font-family: 'SSSym'; src: url(data:font/ttf;base64,__F_Sym__) format('truetype'); }
+:root {
+  --bg: #E9EBEE; --panel: #F7F8FA; --surface: #FFFFFF; --ink: #16181D; --muted: #5F6672; --line: #D3D7DD;
+  --accent: #F4B400; --accent-ink: #1D1702; --chord: #1A4FD6; --danger: #C4321F; --ok: #1F7A3E; --warn: #9A5B00;
+  --stage: #CDD1D7; --focus: #1A4FD6;
+  --f-ui: 'SSCondMed', 'IBM Plex Sans Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --f-strong: 'SSCondBold', 'IBM Plex Sans Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --f-mono: 'SSMono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0D0F12; --panel: #15181C; --surface: #1C2025; --ink: #E9ECF0; --muted: #98A0AB; --line: #2B3037;
+  --accent: #F4B400; --accent-ink: #1D1702; --chord: #7FB0FF; --danger: #FF6B57; --ok: #5BC783; --warn: #F0B44A;
+  --stage: #07080A; --focus: #7FB0FF; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0D0F12; --panel: #15181C; --surface: #1C2025; --ink: #E9ECF0; --muted: #98A0AB; --line: #2B3037;
+  --accent: #F4B400; --accent-ink: #1D1702; --chord: #7FB0FF; --danger: #FF6B57; --ok: #5BC783; --warn: #F0B44A;
+  --stage: #07080A; --focus: #7FB0FF; color-scheme: dark; }
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-ui); font-size: 15px; display: flex; flex-direction: column; overflow: hidden; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.bar { display: flex; align-items: center; gap: 10px; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.brand { font-family: var(--f-strong); font-size: 19px; letter-spacing: .2px; display: flex; align-items: baseline; gap: 8px; margin-right: auto; }
+.brand small { font-family: var(--f-ui); color: var(--muted); font-size: 13px; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 7px; padding: 7px 12px; min-height: 36px; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-family: var(--f-strong); }
+.btn.ghost { background: transparent; }
+.btn:disabled { opacity: .6; cursor: progress; }
+.toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.toggle button { border: 0; background: var(--surface); padding: 7px 11px; min-height: 36px; color: var(--muted); }
+.toggle button[aria-pressed="true"] { background: var(--ink); color: var(--panel); font-family: var(--f-strong); }
+
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: 270px minmax(340px, 430px) 1fr; }
+#lib { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.libhead { padding: 12px 14px 8px; display: grid; gap: 8px; }
+.libhead input { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 7px; padding: 8px 10px; }
+.libmeta { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13px; }
+#songList { list-style: none; margin: 0; padding: 0 8px 16px; overflow-y: auto; flex: 1; }
+.song { width: 100%; text-align: left; border: 0; background: transparent; border-radius: 7px; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; }
+.song:hover { background: var(--surface); }
+.song.active { background: var(--ink); color: var(--panel); }
+.song.active .sa, .song.active .sk { color: inherit; opacity: .75; }
+.song .st { font-family: var(--f-strong); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song .sa { color: var(--muted); font-size: 13px; grid-column: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song .sk { grid-row: 1 / span 2; grid-column: 2; align-self: center; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+#songList .empty { color: var(--muted); padding: 12px 10px; font-size: 14px; }
+.libfoot { border-top: 1px solid var(--line); padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.libfoot .btn { font-size: 13px; }
+.libfoot .wide { grid-column: 1 / -1; }
+
+#edit { overflow-y: auto; border-right: 1px solid var(--line); background: var(--bg); min-width: 0; }
+#editor { padding: 14px 16px 40px; display: grid; gap: 14px; }
+#noSong { padding: 40px 24px; color: var(--muted); display: grid; gap: 12px; justify-items: start; }
+.row { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+.row3 { display: grid; gap: 10px; grid-template-columns: 1fr 1fr 1fr; }
+label.f { display: grid; gap: 4px; font-size: 12px; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; font-family: var(--f-strong); min-width: 0; }
+label.f input, label.f select, label.f textarea { text-transform: none; letter-spacing: 0; font-family: var(--f-ui); font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; width: 100%; min-width: 0; }
+label.f .big { font-family: var(--f-strong); font-size: 20px; }
+textarea#f_raw { font-family: var(--f-mono); font-size: 13px; line-height: 1.35; min-height: 380px; white-space: pre; overflow-x: auto; resize: vertical; tab-size: 4; }
+textarea#f_notes, textarea#f_shapes { min-height: 64px; resize: vertical; }
+textarea#f_shapes { font-family: var(--f-mono); font-size: 13px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 13px; min-height: 34px; font-family: var(--f-strong); font-size: 14px; color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--chord); border-color: var(--chord); color: var(--surface); }
+.chip.small { padding: 3px 10px; min-height: 28px; font-size: 12.5px; }
+.tagfield { display: grid; gap: 6px; }
+.tagfield > span { font-size: 12px; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; font-family: var(--f-strong); }
+.tagfield input { text-transform: none; letter-spacing: 0; font-family: var(--f-ui); font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; width: 100%; }
+.keycard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 12px; }
+.readout { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.readout .k { font-family: var(--f-strong); font-size: 26px; line-height: 1; }
+.readout .lab { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-family: var(--f-strong); }
+.readout .capo { background: var(--accent); color: var(--accent-ink); border-radius: 5px; padding: 3px 8px; font-family: var(--f-strong); font-size: 14px; }
+.steppers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stepper { display: grid; gap: 4px; }
+.stepper .ctl { display: grid; grid-template-columns: 40px 1fr 40px; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.stepper button { border: 0; background: var(--panel); font-size: 20px; min-height: 40px; }
+.stepper output { display: grid; place-items: center; font-family: var(--f-mono); font-size: 17px; background: var(--surface); }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--ink); }
+.check input { width: 18px; height: 18px; accent-color: var(--chord); }
+.hint { font-size: 13px; color: var(--muted); line-height: 1.4; }
+.hint code { font-family: var(--f-mono); font-size: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+.danger { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.btn.del { color: var(--danger); }
+.btn.delyes { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+#prev { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--stage); }
+.prevbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+#pageInfo { font-size: 13px; color: var(--muted); margin-right: auto; }
+#pageInfo[data-state="ok"]::before { content: '●  '; color: var(--ok); }
+#pageInfo[data-state="warn"]::before { content: '●  '; color: var(--warn); }
+#pages { overflow-y: auto; flex: 1; padding: 18px; display: grid; gap: 18px; justify-items: center; align-content: start; }
+.page { margin: 0; width: min(100%, 640px); display: grid; gap: 6px; }
+.page svg { width: 100%; height: auto; display: block; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.15), 0 8px 24px rgba(0,0,0,.12); }
+.page figcaption { font-size: 12px; color: var(--muted); text-align: center; }
+#envNote { font-size: 12.5px; color: var(--muted); padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+
+.seg { display: none; }
+#btnLib { display: none; }
+#scrim { display: none; }
+
+#help { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 30; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+#help[hidden] { display: none; }
+#help .card { background: var(--panel); border-radius: 12px; max-width: 560px; width: 100%; max-height: 82vh; overflow-y: auto; padding: 20px 22px; display: grid; gap: 10px; line-height: 1.45; }
+#help h2 { font-family: var(--f-strong); margin: 0; font-size: 20px; }
+#help h3 { font-family: var(--f-strong); margin: 6px 0 0; font-size: 15px; }
+#help p, #help ul { margin: 0; color: var(--ink); font-size: 14.5px; }
+#help ul { padding-left: 18px; display: grid; gap: 4px; }
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 8px; z-index: 40; font-size: 14px; }
+
+@media (max-width: 1180px) {
+  main { grid-template-columns: minmax(320px, 420px) 1fr; }
+  #lib { position: fixed; top: 0; bottom: 0; left: 0; width: min(320px, 86vw); z-index: 20; transform: translateX(-102%); transition: transform .2s ease; padding-top: env(safe-area-inset-top, 0px); padding-left: env(safe-area-inset-left, 0px); }
+  body.lib-open #lib { transform: none; }
+  body.lib-open #scrim { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 19; }
+  #btnLib { display: inline-flex; }
+}
+@media (max-width: 760px) {
+  main { grid-template-columns: 1fr; }
+  .seg { display: inline-flex; }
+  body[data-view="edit"] #prev { display: none; }
+  body[data-view="preview"] #edit { display: none; }
+  #edit { border-right: 0; }
+  .brand small { display: none; }
+  .row3 { grid-template-columns: 1fr 1fr; }
+  #pages { padding: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { #lib { transition: none; } }
+</style>
+
+<header class="bar">
+  <button class="btn" id="btnLib" type="button">Library</button>
+  <div class="brand">Stage Sheets <small>chord sheets for forScore</small></div>
+  <div class="toggle seg" role="group" aria-label="View">
+    <button type="button" data-view="edit" aria-pressed="true">Edit</button>
+    <button type="button" data-view="preview" aria-pressed="false">Preview</button>
+  </div>
+  <div class="toggle" id="paperToggle" role="group" aria-label="Paper">
+    <button type="button" data-paper="light" aria-pressed="true">Light paper</button>
+    <button type="button" data-paper="dark" aria-pressed="false">Dark paper</button>
+  </div>
+  <button class="btn ghost" id="btnHelp" type="button" aria-label="How it works">?</button>
+  <button class="btn primary" id="btnNew" type="button">New song</button>
+</header>
+<div id="envNote" hidden>Saving files is turned off in this view. Open the installed app to export PDFs.</div>
+
+<main>
+  <aside id="lib" aria-label="Library">
+    <div class="libhead">
+      <input id="q" type="search" placeholder="Search title or artist" autocomplete="off">
+      <div class="chips" id="filterChips" aria-label="Filter by tag"></div>
+      <div class="libmeta"><span id="libCount">0 songs</span></div>
+    </div>
+    <ul id="songList"></ul>
+    <div class="libfoot">
+      <button class="btn" id="btnImport" type="button">Import files</button>
+      <button class="btn" id="btnBackup" type="button">Back up library</button>
+      <button class="btn wide" id="btnExportAll" type="button">Export all PDFs</button>
+      <input id="fileIn" type="file" accept=".txt,.json,.text,text/plain,application/json" multiple hidden>
+    </div>
+  </aside>
+  <div id="scrim"></div>
+
+  <section id="edit" aria-label="Song details">
+    <div id="noSong" hidden>
+      <p>No song open.</p>
+      <button class="btn primary" id="btnNew2" type="button">New song</button>
+    </div>
+    <form id="editor" onsubmit="return false" hidden>
+      <label class="f">Title<input id="f_title" class="big" autocomplete="off" placeholder="Song title"></label>
+      <label class="f">Artist<input id="f_artist" autocomplete="off" placeholder="Artist"></label>
+
+      <div class="keycard">
+        <div class="readout">
+          <div><div class="lab">Sounds in</div><div class="k" id="readSounds">?</div></div>
+          <div><div class="lab">You play</div><div class="k" id="readPlay">?</div></div>
+          <span class="capo" id="readCapo">no capo</span>
+        </div>
+        <div class="steppers">
+          <div class="stepper"><label class="f" for="capoVal">Capo</label>
+            <div class="ctl"><button type="button" id="capoDown" aria-label="Capo down">−</button><output id="capoVal">0</output><button type="button" id="capoUp" aria-label="Capo up">+</button></div></div>
+          <div class="stepper"><label class="f" for="trVal">Transpose chords</label>
+            <div class="ctl"><button type="button" id="trDown" aria-label="Transpose down">−</button><output id="trVal">0</output><button type="button" id="trUp" aria-label="Transpose up">+</button></div></div>
+        </div>
+        <label class="check"><input type="checkbox" id="f_lock"> Moving the capo keeps the song in the same key</label>
+        <label class="f">Key the pasted chords are written in<select id="f_shapeKey"></select></label>
+      </div>
+
+      <label class="f">My changes<textarea id="f_notes" placeholder="Arrangement notes, skips, endings…"></textarea></label>
+      <div class="row">
+        <label class="f">BPM<input id="f_bpm" inputmode="numeric" autocomplete="off"></label>
+        <label class="f">Tuning<input id="f_tuning" autocomplete="off" placeholder="Standard"></label>
+      </div>
+      <div class="f tagfield"><span>Tags</span><div class="chips" id="tagChips"></div>
+        <input id="f_tagsOther" autocomplete="off" placeholder="Other tags, comma separated" aria-label="Other tags"></div>
+      <label class="f">Chord shapes to remind me of<textarea id="f_shapes" spellcheck="false" autocapitalize="off" placeholder="Cadd9 x32033&#10;Bm7 x24232&#10;F#m 244222"></textarea></label>
+
+      <label class="f">Chord sheet (paste from Ultimate Guitar)<textarea id="f_raw" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="[Verse 1]&#10;G         Am&#10;Lyrics under the chords…"></textarea></label>
+      <p class="hint">Section names in square brackets, like <code>[Chorus]</code>, become colored labels. Start a line with <code>!</code> to make a red reminder banner, like <code>! Key change up to A</code>. Chord shapes can also go in the sheet as <code>Shape: Cadd9 x32033</code>.</p>
+
+      <div class="row">
+        <label class="f">Lyrics size<select id="f_font"><option value="auto">Auto fit</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option></select></label>
+        <div style="display:grid;gap:8px;align-self:end;padding-bottom:4px">
+          <label class="check"><input type="checkbox" id="f_condense"> Condense looping chords</label>
+          <label class="check"><input type="checkbox" id="f_collapse"> Shorten repeated sections</label>
+        </div>
+      </div>
+      <div class="danger"><button class="btn del" id="btnDelete" type="button">Delete song</button>
+        <span id="delConfirm" hidden>Delete this song for good? <button class="btn delyes" id="delYes" type="button">Delete</button> <button class="btn" id="delNo" type="button">Keep</button></span></div>
+    </form>
+  </section>
+
+  <section id="prev" aria-label="Page preview">
+    <div class="prevbar">
+      <span id="pageInfo"></span>
+      <button class="btn" id="btnShare" type="button">Share song file</button>
+      <button class="btn primary" id="btnExport" type="button">Export PDF</button>
+    </div>
+    <div id="pages"></div>
+  </section>
+</main>
+
+<div id="help" hidden><div class="card">
+  <h2>How Stage Sheets works</h2>
+  <p>Your library lives on this device. Paste a chord sheet, check the key and capo, and export a PDF for forScore.</p>
+  <h3>Pasting</h3>
+  <ul>
+    <li>Copy the chords and lyrics from Ultimate Guitar and paste them into the chord sheet box. Spacing is kept, so chords stay over the right words.</li>
+    <li>Lines like <code>Capo: 3</code>, <code>Tuning: Eb</code> or <code>Key: G</code> are read into the fields above.</li>
+    <li>A line starting with <code>!</code> becomes a red banner. Use it for key changes and big reminders.</li>
+  </ul>
+  <h3>Key and capo</h3>
+  <ul>
+    <li><b>Sounds in</b> is the real key. <b>You play</b> is the chord shapes your hands make.</li>
+    <li>With the lock on, moving the capo rewrites the chords so the song still sounds the same.</li>
+    <li>Transpose moves the whole song up or down, for a different vocal range.</li>
+  </ul>
+  <h3>Pages</h3>
+  <ul>
+    <li>Auto fit picks the largest lyric size that keeps the song on the fewest pages. Pages only break between sections.</li>
+    <li>Condense looping chords: when a whole section runs on one short loop, the loop goes on the section label and the lyrics print clean. A repeat of a section already shown on the same page prints lyrics only.</li>
+    <li>When a song runs to a second page, the footer names the next section so you know what's coming.</li>
+  </ul>
+  <h3>Tags and forScore</h3>
+  <ul>
+    <li>Tags, the artist and the key are written into each PDF. forScore reads them on import, so you can build setlists from tags like Campfire or Jam.</li>
+  </ul>
+  <h3>Sharing and backup</h3>
+  <ul>
+    <li>Share song file saves a small file a friend can import into their own Stage Sheets.</li>
+    <li>Back up library now and then. It saves every song in one file you can import later.</li>
+  </ul>
+  <button class="btn primary" id="helpClose" type="button">Got it</button>
+</div></div>
+<div id="toast" role="status" hidden></div>
+
+<!--SCRIPTS-->
