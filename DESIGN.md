@@ -18,27 +18,24 @@ Read this file before changing the app. Update it when a decision changes.
 - Pages never break inside a section. A section taller than a whole page is the only exception.
 - When a song runs to two pages, page 2 repeats a slim header and the page 1 footer names the next section.
 
-**Header**
-- Big title and artist.
-- KEY shows the key the song sounds in. With a capo, an amber box shows CAPO n and the chord shapes played (PLAY G shapes). Without a capo it says NO CAPO.
-- BPM and tuning when set (tuning only when not standard).
-- Chords summary box, top right: section labels on the left, chords on the right. Sections that share a progression merge into one row. When one loop covers the whole song it says WHOLE SONG.
-- MY CHANGES box for arrangement notes.
-- Chord diagrams only for chords the user marks (`Shape: Cadd9 x32033`, or the shapes field).
-- No strumming patterns. No time signature.
+**Header (v4): read once, so it stays small**
+- One title line: title (20 pt, shrinks to fit), artist and BPM small beside it. Key and capo pills at the right. The capo stays amber.
+- Full-width chords strip under it: section labels in their colors, then the chords large in bold monospace. Sections that share a progression merge. When one loop covers the whole song it says WHOLE SONG. This is the most important part of the header.
+- Chord diagrams sit at the right end of the strip, only for chords the user marks (`Shape: Cadd9 x32033`, or the shapes field).
+- My changes: up to three small lines with a thin amber rule.
+- Tuning shows only when not standard. No strumming patterns. No time signature.
 
-**Body (v3)**
-- Every section is a block with its label in a small left tag column, so labels cost no row. Chorus, pre-chorus, refrain, bridge and instrumental blocks get a soft tint in their section color. Verses stay plain with a faint rule. Labels are shortened: PRE, POST, INST.
-- The main loop is the progression shared by the most sections. It shows once in the chords box. Sections on it print lyrics only, in the narrow sans font.
-- A section on its own short loop prints lyrics only and shows that loop under its tag.
+**Body (v4)**
+- No section labels. Sections are told apart by color only: chorus, pre-chorus, refrain, bridge and instrumental blocks get a soft tint in their color. Verses are untinted with a thin line down the left in the verse color. The chords strip in the header doubles as the color key.
+- The main loop is the progression shared by the most sections. Sections on it print lyrics only, in the narrow sans font.
+- A section on its own short loop prints lyrics only, with that loop as a big bold chord line at the top of its block.
+- Intros, solos, instrumentals and outros print as big bold chord lines (`Am  F  C  G  ×4`).
 - Other sections print chords over lyrics in monospace. A line that starts with a single chord shows the chord in a left gutter.
-- Chord-only lines condense to `Am F C G ×4`.
-- Repeats: an exact repeat becomes a chip in a roadmap line (`PRE-CHORUS → CHORUS → SOLO ×4`). A repeat with new words shows only the changed lines (tagged "new lines"). A single changed short line sits inline after its chip. On two-page songs, repeats with new words print in full.
-- A later section with the same chords as an earlier one of the same name prints lyrics only ("same chords"), on one-page songs only.
+- Repeats: an exact repeat becomes a labeled chip in a roadmap line (`PRE-CHORUS → CHORUS → SOLO ×4`). The roadmap is the only place labels remain. A repeat with new words shows only the changed lines. A single changed short line sits inline after its chip. On two-page songs, repeats with new words print in full.
 - A line starting with `!` becomes a red banner.
 
 **Fitting**
-- Order: one column at the largest size from 15 down to 11 pt. Then two columns. Two columns win only when they allow text at least 2 pt larger, or when one column can't fit.
+- Order: one column at the largest size from 16 down to 11 pt. Then two columns. Two columns win only when they allow text at least 2 pt larger, or when one column can't fit. Two columns are never used if a chords-over-lyrics line would have to break.
 - If one page is impossible, use two pages at the largest size that fits.
 - Text floor is 11 pt everywhere (chosen from `tools/size_test.py`).
 - Blocks never split across columns or pages unless one is taller than a whole column.

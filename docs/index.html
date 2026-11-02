@@ -814,113 +814,90 @@ function layout(song, opts, measure) {
   const artist = song.artist || '';
   const parsed = info.parsed;
 
-  // ----- header (page 1) -----
+  // ----- header (page 1): compact. Title line, full-width chords strip, one line of notes -----
   const summary = chordSummary(parsed);
   const head = [];
-  const boxW = summary.length ? 196 : 0;
-  const leftW = W - 2 * M - (boxW ? boxW + 16 : 0);
   let y = TOP;
-
-  // title
-  let tSize = 30, tLines = [title];
-  for (let sz = 30; sz >= 17; sz -= 1) {
-    tSize = sz; tLines = wrapWords(title, leftW, 'CondBold', sz, measure);
-    if (tLines.length === 1 || (tLines.length === 2 && sz <= 24)) break;
-  }
-  tLines = tLines.slice(0, 2);
-  for (const tl of tLines) { y += tSize * 0.95; head.push({ t: 'text', x: M, y, str: tl, font: 'CondBold', size: tSize, color: theme.ink }); y += tSize * 0.12; }
-  if (artist) { y += 15; head.push({ t: 'text', x: M, y, str: artist, font: 'CondMed', size: 14, color: theme.muted }); }
-  y += 12;
-
-  // pills
-  const pills = [];
   const soundsName = info.sounds ? keyName(info.sounds) : '';
   const playName = info.play ? keyName(info.play) : '';
-  pills.push({ fill: theme.keyFill, runs: [{ text: 'KEY  ', font: 'CondMed', size: 10, color: theme.keyInk }, ...keyRuns(soundsName || '?', 'CondBold', 13, theme.keyInk)] });
-  if (info.capo > 0) {
-    pills.push({ fill: theme.capoFill, runs: [{ text: 'CAPO ' + info.capo, font: 'CondBold', size: 13, color: theme.capoInk }, { text: '   PLAY  ', font: 'CondMed', size: 10, color: theme.capoInk }, ...keyRuns(playName || '?', 'CondBold', 13, theme.capoInk), { text: ' shapes', font: 'CondMed', size: 10, color: theme.capoInk }] });
-  } else {
-    pills.push({ stroke: theme.faint, runs: [{ text: 'NO CAPO', font: 'CondBold', size: 11, color: theme.muted }] });
-  }
-  if (song.bpm) pills.push({ stroke: theme.faint, runs: [{ text: String(song.bpm), font: 'CondBold', size: 12, color: theme.ink }, { text: ' BPM', font: 'CondMed', size: 10, color: theme.muted }] });
-  if (song.tuning && !/^\s*(standard|e\s*a\s*d\s*g\s*b\s*e)\s*$/i.test(song.tuning)) pills.push({ stroke: theme.callout, runs: [{ text: 'TUNING  ', font: 'CondMed', size: 10, color: theme.callout }, { text: song.tuning, font: 'CondBold', size: 12, color: theme.callout }] });
-  const PH = 22, PP = 8;
-  let px = M, py = y;
-  for (const p of pills) {
-    const w = runsWidth(p.runs, measure) + PP * 2;
-    if (px + w > M + leftW && px > M) { px = M; py += PH + 6; }
-    head.push({ t: 'rect', x: px, y: py, w, h: PH, r: 4, fill: p.fill, stroke: p.stroke });
-    head.push({ t: 'runs', x: px + PP, y: py + PH * 0.68, runs: p.runs });
-    px += w + 6;
-  }
-  y = py + PH;
+
+  // right side pills: key, capo, tuning
+  const pills = [];
+  pills.push({ fill: theme.keyFill, runs: [{ text: 'KEY ', font: 'CondMed', size: 9, color: theme.keyInk }, ...keyRuns(soundsName || '?', 'CondBold', 12, theme.keyInk)] });
+  if (info.capo > 0) pills.push({ fill: theme.capoFill, runs: [{ text: 'CAPO ' + info.capo, font: 'CondBold', size: 12, color: theme.capoInk }, { text: '  PLAY ', font: 'CondMed', size: 9, color: theme.capoInk }, ...keyRuns(playName || '?', 'CondBold', 12, theme.capoInk)] });
+  else pills.push({ stroke: theme.faint, runs: [{ text: 'NO CAPO', font: 'CondBold', size: 10, color: theme.muted }] });
+  if (song.tuning && !/^\s*(standard|e\s*a\s*d\s*g\s*b\s*e)\s*$/i.test(song.tuning)) pills.push({ stroke: theme.callout, runs: [{ text: 'TUNING ', font: 'CondMed', size: 9, color: theme.callout }, { text: song.tuning, font: 'CondBold', size: 11, color: theme.callout }] });
+  const PH = 19, PP = 7;
+  const pw = pills.map(p => runsWidth(p.runs, measure) + PP * 2);
+  const pillsW = pw.reduce((a, b) => a + b, 0) + 5 * (pills.length - 1);
+
+  // title line
+  const sub = [artist, song.bpm ? song.bpm + ' BPM' : ''].filter(Boolean).join('  ·  ');
+  const titleMax = W - 2 * M - pillsW - 14;
+  let tSize = 20;
+  const subW = sub ? measure(sub, 'CondMed', 10.5) + 10 : 0;
+  while (tSize > 13 && measure(title, 'CondBold', tSize) + subW > titleMax) tSize -= 0.5;
+  let tStr = title;
+  while (measure(tStr, 'CondBold', tSize) + subW > titleMax && tStr.length > 4) tStr = tStr.slice(0, -2).trim() + '…';
+  const base = y + 18;
+  head.push({ t: 'text', x: M, y: base, str: tStr, font: 'CondBold', size: tSize, color: theme.ink });
+  if (sub) head.push({ t: 'text', x: M + measure(tStr, 'CondBold', tSize) + 10, y: base, str: sub, font: 'CondMed', size: 10.5, color: theme.muted });
+  let px = W - M - pillsW;
+  pills.forEach((p, i) => {
+    head.push({ t: 'rect', x: px, y: base - PH * 0.74, w: pw[i], h: PH, r: 4, fill: p.fill, stroke: p.stroke });
+    head.push({ t: 'runs', x: px + PP, y: base - PH * 0.74 + PH * 0.69, runs: p.runs });
+    px += pw[i] + 5;
+  });
+  y = base + 9;
+
+  // full-width chords strip (with any chord diagrams at its right end)
   const shapes = songShapes(song, info.meta, info.transpose, info.play ? prefersFlats(info.play) : false);
-  if (shapes.length) {
-    y += 8;
-    let sx0 = M;
-    for (const sh of shapes) {
-      if (sx0 + DIAG.w > M + leftW) { sx0 = M; y += DIAG.h + 4; }
-      head.push(...shapeOps(sh, sx0, y, theme, measure)); sx0 += DIAG.w + 6;
-    }
-    y += DIAG.h - 6;
-  }
-  let leftBottom = y;
-
-  // chord summary box
-  let boxBottom = TOP;
-  if (boxW) {
-    const bx = W - M - boxW, by = TOP + 2, pad = 9;
-    const ops = []; let yy = by + pad + 7;
-    ops.push({ t: 'text', x: bx + pad, y: yy, str: 'CHORDS', font: 'CondBold', size: 8, color: theme.muted, spacing: 1 });
-    yy += 4;
-    const cs = summary.length > 5 ? 10.5 : 11.5;
-    const labW = 58, chX = bx + pad + labW + 4, chW = boxW - pad * 2 - labW - 4;
-    const maxCh = Math.floor(chW / (cs * CW));
-    yy += 2;
+  const shapesW = shapes.length ? shapes.length * (DIAG.w + 4) + 6 : 0;
+  if (summary.length || shapes.length) {
+    const sx = M, sw = W - 2 * M, pad = 8;
+    const innerW = sw - pad * 2 - shapesW;
+    const cs = 13, lfs = 9, gapE = 20, lineH = 21;
+    const ops = []; const lines = [[]]; let lx = 0;
     for (const r of summary) {
-      const labs = r.labels.map(lb => ({ text: lb.text.toUpperCase().replace(/^PRE$/, 'PRE'), kind: lb.kind }));
-      // label column: wrap labels, each keeps its own color
-      const labLines = [[]]; let lw = 0;
-      for (const lb of labs) {
-        const w = measure(lb.text, 'CondBold', 8) + (labLines[labLines.length - 1].length ? measure(' · ', 'CondBold', 8) : 0);
-        if (lw + w > labW && labLines[labLines.length - 1].length) { labLines.push([]); lw = 0; }
-        labLines[labLines.length - 1].push(lb); lw += w;
-      }
+      const labs = r.labels.map(lb => ({ text: lb.text.toUpperCase(), kind: lb.kind }));
+      const labTxt = labs.map(l => l.text).join(' · ');
+      const lw = measure(labTxt, 'CondBold', lfs) + 7;
       const chordStr = r.chords.join('  ') + (r.more ? '  …' : '');
-      const chLines = wrapPlain(chordStr, maxCh).map(t => t.trim());
-      const rowH = Math.max(labLines.length * 10, chLines.length * cs * 1.2);
-      let ly = yy + 10;
-      for (const line of labLines) {
-        let lx = bx + pad;
-        line.forEach((lb, i) => {
-          const t = lb.text + (i < line.length - 1 ? ' · ' : '');
-          ops.push({ t: 'text', x: lx, y: ly, str: t, font: 'CondBold', size: 8, color: theme.kind[lb.kind] || theme.muted });
-          lx += measure(t, 'CondBold', 8);
-        });
-        ly += 10;
-      }
-      let cy = yy + cs * 0.95;
-      for (const w of chLines) { ops.push({ t: 'text', x: chX, y: cy, str: w, font: 'MonoSemi', size: cs, color: theme.chord }); cy += cs * 1.2; }
-      yy += rowH + 5;
+      const cw = chordStr.length * CW * cs;
+      const ew = lw + cw;
+      if (lx + ew > innerW && lx > 0) { lines.push([]); lx = 0; }
+      lines[lines.length - 1].push({ labs, lw, chordStr, x: lx });
+      lx += ew + gapE;
     }
-    const bh = yy - by + pad - 2;
-    head.push({ t: 'rect', x: bx, y: by, w: boxW, h: bh, r: 6, fill: theme.boxBg, stroke: theme.faint });
-    head.push(...ops);
-    boxBottom = by + bh;
+    const stripH = Math.max(summary.length ? lines.length * lineH + pad * 0.8 : 0, shapes.length ? DIAG.h + 4 : 0);
+    head.push({ t: 'rect', x: sx, y, w: sw, h: stripH, r: 6, fill: theme.boxBg });
+    lines.forEach((line, li) => {
+      const by = y + pad * 0.4 + li * lineH + lineH * 0.7;
+      line.forEach((e, ei) => {
+        let x = sx + pad + e.x;
+        if (ei > 0) head.push({ t: 'rect', x: x - gapE / 2, y: by - cs * 0.8, w: 0.8, h: cs * 1.0, r: 0, fill: theme.faint });
+        e.labs.forEach((lb, i) => {
+          const t = lb.text + (i < e.labs.length - 1 ? ' · ' : '');
+          head.push({ t: 'text', x, y: by - 1, str: t, font: 'CondBold', size: lfs, color: theme.kind[lb.kind] || theme.muted });
+          x += measure(t, 'CondBold', lfs);
+        });
+        head.push({ t: 'text', x: sx + pad + e.x + e.lw, y: by, str: e.chordStr, font: 'MonoBold', size: cs, color: theme.chord });
+      });
+    });
+    let dx = sx + sw - pad - shapesW + 6;
+    for (const sh of shapes) { head.push(...shapeOps(sh, dx, y + 2, theme, measure)); dx += DIAG.w + 4; }
+    y += stripH + 6;
   }
-  y = Math.max(leftBottom, boxBottom) + 12;
 
-  // my changes
+  // my changes: small, read once
   if (song.notes && song.notes.trim()) {
-    const nw = W - 2 * M, pad = 9;
-    const lines = wrapWords(song.notes.trim(), nw - pad * 2 - 4, 'CondMed', 11.5, measure).slice(0, 8);
-    const nh = pad + 10 + lines.length * 14.5 + pad - 3;
-    head.push({ t: 'rect', x: M, y, w: nw, h: nh, r: 5, fill: theme.noteTint });
-    head.push({ t: 'rect', x: M, y, w: 3.5, h: nh, r: 0, fill: theme.noteBar });
-    let ny = y + pad + 7;
-    head.push({ t: 'text', x: M + pad + 4, y: ny, str: 'MY CHANGES', font: 'CondBold', size: 8, color: theme.noteLabel, spacing: 1 });
-    for (const l of lines) { ny += 14.5; head.push({ t: 'text', x: M + pad + 4, y: ny, str: l, font: 'CondMed', size: 11.5, color: theme.ink }); }
-    y += nh + 10;
+    const lab = 'MY CHANGES  ';
+    const labW = measure(lab, 'CondBold', 7.5);
+    const lines = wrapWords(song.notes.trim(), W - 2 * M - labW - 8, 'CondMed', 10, measure).slice(0, 3);
+    head.push({ t: 'rect', x: M, y: y + 1, w: 2.5, h: lines.length * 12.5 + 1, r: 1, fill: theme.noteBar });
+    head.push({ t: 'text', x: M + 7, y: y + 10, str: lab, font: 'CondBold', size: 7.5, color: theme.noteLabel });
+    lines.forEach((l, i) => head.push({ t: 'text', x: M + 7 + labW, y: y + 10 + i * 12.5, str: l, font: 'CondMed', size: 10, color: theme.ink }));
+    y += lines.length * 12.5 + 6;
   }
   head.push({ t: 'rect', x: M, y, w: W - 2 * M, h: 0.8, r: 0, fill: theme.faint });
   const headerBottom = y + 6;
@@ -1009,13 +986,14 @@ function layout(song, opts, measure) {
 
   /* Measure items into rows at size s for a column of width colW. */
   function build(items, s, colW, cols) {
-    const tagW = cols > 1 ? 48 : 62;
-    const bodyW = colW - tagW - 6;
+    const tagW = 10;
+    const bodyW = colW - tagW - 4;
     const maxC = Math.floor(bodyW / (CW * s));
     const ls = s * 1.04; // sans lyric size
     const tagFs = Math.min(10, Math.max(8.4, s * 0.72));
-    const L = { pair: s * 2.2, mono: s * 1.27, sans: s * 1.28, chords: s * 1.36, blank: s * 0.35, callout: s * 1.7, road: s * 1.62, pad: s * 0.26 };
+    const L = { pair: s * 2.2, mono: s * 1.27, sans: s * 1.28, chords: s * 1.45, blank: s * 0.35, callout: s * 1.7, road: s * 1.62, pad: s * 0.26 };
     const out = [];
+    let pairWraps = 0;
     for (const it of items) {
       if (it.type === 'callout') { out.push({ ...it, h: L.callout }); continue; }
       if (it.type === 'road') {
@@ -1054,28 +1032,15 @@ function layout(song, opts, measure) {
           wrapPlain(l.text.replace(/^\s+/, ''), maxC - gutter).forEach((w, i) => rows.push({ t: 'inline', chord: i ? '' : l.chords, text: w, gutter, h: L.mono * 1.04 }));
           continue;
         }
-        if (l.type === 'pair') { for (const p of splitPair(l.chords, l.text, maxC)) rows.push({ t: 'pair', chords: p.chords, text: p.text, h: L.pair }); continue; }
+        if (l.type === 'pair') { const ps = splitPair(l.chords, l.text, maxC); if (ps.length > 1) pairWraps++; for (const p of ps) rows.push({ t: 'pair', chords: p.chords, text: p.text, h: L.pair }); continue; }
         for (const w of wrapPlain(l.text, maxC)) rows.push({ t: 'mono', text: w, h: L.mono });
       }
       while (rows.length && rows[rows.length - 1].t === 'blank') rows.pop();
-      // tag column content
-      const label = tagName(it.sec.name);
-      const tag = [];
-      if (label) {
-        const lfs = Math.min(tagFs, tagFs * (tagW - 10) / Math.max(1, measure(label, 'CondBold', tagFs)));
-        tag.push({ t: 'label', text: label, fs: lfs, h: tagFs * 1.2 });
-      }
-      if (it.loop) {
-        const cfs = Math.min(s * 0.78, 9.5);
-        const per = Math.max(1, Math.floor((tagW - 4) / (CW * cfs)));
-        for (const w of wrapPlain(it.loop.join(' '), per)) tag.push({ t: 'loop', text: w.trim(), fs: cfs, h: cfs * 1.18 });
-      }
-      if (it.note) tag.push({ t: 'note', text: it.note, h: tagFs * 1.2 });
-      const tagH = tag.reduce((a, r) => a + r.h, 0) + 2;
+      if (it.loop) rows.unshift({ t: 'chords', chords: respaceChords(it.loop.join(' ')), h: L.chords });
       const rowsH = rows.reduce((a, r) => a + r.h, 0);
-      out.push({ ...it, rows, tag, tagFs, tagW, h: Math.max(rowsH, tagH) + L.pad * 2 });
+      out.push({ ...it, rows, tagW, h: rowsH + L.pad * 2 });
     }
-    return { items: out, tagW, gap: s * 0.38 };
+    return { items: out, tagW, gap: s * 0.38, pairWraps };
   }
 
   /* Flow measured items into pages and columns. Items never split unless taller than a column. */
@@ -1102,24 +1067,27 @@ function layout(song, opts, measure) {
     const colW = (W - 2 * M - 16 * (cols - 1)) / cols;
     const built = build(plan(repeatMode, onePage), s, colW, cols);
     const f = flow(built, cols);
-    return { s, cols, repeatMode, pages: f.pages, n: f.pages.length };
+    return { s, cols, repeatMode, pages: f.pages, n: f.pages.length, pairWraps: built.pairWraps };
   }
 
   let best = null;
-  const sizes = []; for (let s = 15; s >= 11; s -= 0.5) sizes.push(s);
-  if (opts.fontSize && opts.fontSize !== 'auto') {
+  const sizes = []; for (let s = 16; s >= 11; s -= 0.5) sizes.push(s);
+  if (opts.cols && opts.fontSize && opts.fontSize !== 'auto') {
+    best = attempt(+opts.fontSize, opts.cols, 'diff', true);
+  } else if (opts.fontSize && opts.fontSize !== 'auto') {
     const s = +opts.fontSize;
     const a1 = attempt(s, 1, 'diff', true);
     best = a1.n === 1 ? a1 : (attempt(s, 2, 'diff', true).n === 1 ? attempt(s, 2, 'diff', true) : attempt(s, 1, 'full', false));
   } else {
     const fit1 = sizes.map(s => attempt(s, 1, 'diff', true)).find(a => a.n === 1);
-    const fit2 = sizes.map(s => attempt(s, 2, 'diff', true)).find(a => a.n === 1);
+    // two columns only when no chords-over-lyrics line has to break
+    const fit2 = sizes.map(s => attempt(s, 2, 'diff', true)).find(a => a.n === 1 && a.pairWraps === 0);
     if (fit1 && (!fit2 || fit2.s < fit1.s + 2)) best = fit1;
     else if (fit2) best = fit2;
     else {
       best = sizes.map(s => attempt(s, 1, 'full', false)).find(a => a.n <= 2)
         || sizes.map(s => attempt(s, 1, 'diff', false)).find(a => a.n <= 2)
-        || sizes.map(s => attempt(s, 2, 'diff', false)).find(a => a.n <= 2)
+        || sizes.map(s => attempt(s, 2, 'diff', false)).find(a => a.n <= 2 && a.pairWraps === 0)
         || attempt(11, 2, 'diff', false);
     }
   }
@@ -1183,17 +1151,9 @@ function layout(song, opts, measure) {
       return;
     }
     const kind = it.sec.kind, col = theme.kind[kind] || theme.muted, tint = theme.tint[kind];
-    if (tint) ops.push({ t: 'rect', x: x0, y: yy, w, h: it.h, r: 6, fill: tint });
-    else ops.push({ t: 'rect', x: x0 + 1, y: yy + s * 0.2, w: 2, h: it.h - s * 0.4, r: 1, fill: theme.faint });
+    if (tint) ops.push({ t: 'rect', x: x0, y: yy, w, h: it.h, r: 5, fill: tint });
+    else ops.push({ t: 'rect', x: x0, y: yy + s * 0.15, w: 2.5, h: it.h - s * 0.3, r: 1.25, fill: col });
     const pad = s * 0.26;
-    // tag column
-    let ty = yy + pad;
-    for (const r of it.tag) {
-      ty += r.h;
-      if (r.t === 'label') ops.push({ t: 'text', x: x0 + 7, y: ty - r.h * 0.2, str: r.text, font: 'CondBold', size: r.fs, color: col, spacing: 0.4 });
-      else if (r.t === 'loop') ops.push({ t: 'text', x: x0 + 7, y: ty - r.h * 0.2, str: r.text, font: 'MonoBold', size: r.fs, color: theme.chord });
-      else ops.push({ t: 'text', x: x0 + 7, y: ty - r.h * 0.25, str: r.text, font: 'CondMed', size: it.tagFs * 0.92, color: theme.muted });
-    }
     const bx = x0 + it.tagW;
     yy += pad;
     for (const r of it.rows) {
@@ -1205,7 +1165,7 @@ function layout(song, opts, measure) {
         if (r.chord) ops.push({ t: 'text', x: bx, y: by, str: r.chord, font: 'MonoBold', size: s, color: theme.chord });
         ops.push({ t: 'text', x: bx + r.gutter * CW * s, y: by, str: r.text, font: 'Mono', size: s, color: theme.ink });
       } else if (r.t === 'chords') {
-        pushChordRow(ops, r.chords, bx, yy + r.h * 0.72, s * 1.04, theme);
+        pushChordRow(ops, r.chords, bx, yy + r.h * 0.72, s * 1.12, theme);
       } else if (r.t === 'mono') {
         ops.push({ t: 'text', x: bx, y: yy + r.h * 0.76, str: r.text, font: 'Mono', size: s, color: theme.ink });
       } else if (r.t === 'sans') {

@@ -9,7 +9,7 @@ FONTS = {'Mono': 'mono-reg', 'MonoSemi': 'mono-semi', 'MonoBold': 'mono-bold', '
 FONT_DIR = os.path.join(ROOT, 'assets', 'fonts')
 VENDOR = {n: os.path.join(ROOT, 'assets', 'vendor', n) for n in ('jspdf.umd.min.js', 'jszip.min.js')}
 CDN = ['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js']
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 
 def rd(p): return open(os.path.join(ROOT, p), encoding='utf8').read()
 
